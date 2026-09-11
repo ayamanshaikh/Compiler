@@ -18,42 +18,48 @@ export default function VariablePanel({
   const hasVariables = Object.keys(variables).length > 0;
   const hasArrays = Object.keys(arrays).length > 0;
   const [changedVars, setChangedVars] = useState<Set<string>>(new Set());
-  const prevVarsRef = useRef<Record<string, string>>({});
+  const [prevVars, setPrevVars] = useState<Record<string, string>>(variables);
   const varRowsRef = useRef<(HTMLDivElement | null)[]>([]);
 
-  useEffect(() => {
+  // Detect which variables changed since the previous step. This is the
+  // documented "adjusting state when props change" pattern (setState during
+  // render is allowed for it); the anime.js animation is a side effect and
+  // lives in the effect below.
+  if (variables !== prevVars) {
     const changed = new Set<string>();
     for (const [key, val] of Object.entries(variables)) {
-      if (prevVarsRef.current[key] !== undefined && prevVarsRef.current[key] !== val) {
+      if (prevVars[key] !== undefined && prevVars[key] !== val) {
         changed.add(key);
       }
     }
-    if (changed.size > 0) {
-      setChangedVars(changed);
+    setPrevVars(variables);
+    setChangedVars(changed);
+  }
 
-      // Animate changed variable rows with anime.js
-      varRowsRef.current.forEach((row, i) => {
-        if (!row) return;
-        const name = Object.keys(variables)[i];
-        if (changed.has(name)) {
-          animate(row, {
-            scale: [1, 1.02, 1],
-            boxShadow: [
-              "0 0 0px rgba(59, 130, 246, 0)",
-              "0 0 20px rgba(59, 130, 246, 0.3)",
-              "0 0 0px rgba(59, 130, 246, 0)",
-            ],
-            duration: 600,
-            ease: "outExpo",
-          });
-        }
-      });
+  useEffect(() => {
+    if (changedVars.size === 0) return;
 
-      const timer = setTimeout(() => setChangedVars(new Set()), 800);
-      return () => clearTimeout(timer);
-    }
-    prevVarsRef.current = { ...variables };
-  }, [variables]);
+    // Animate changed variable rows with anime.js
+    varRowsRef.current.forEach((row, i) => {
+      if (!row) return;
+      const name = Object.keys(variables)[i];
+      if (changedVars.has(name)) {
+        animate(row, {
+          scale: [1, 1.02, 1],
+          boxShadow: [
+            "0 0 0px rgba(59, 130, 246, 0)",
+            "0 0 20px rgba(59, 130, 246, 0.3)",
+            "0 0 0px rgba(59, 130, 246, 0)",
+          ],
+          duration: 600,
+          ease: "outExpo",
+        });
+      }
+    });
+
+    const timer = setTimeout(() => setChangedVars(new Set()), 800);
+    return () => clearTimeout(timer);
+  }, [variables, changedVars]);
 
   // Stagger-animate array items when they change
   const arrayValuesRef = useRef<(HTMLDivElement | null)[]>([]);

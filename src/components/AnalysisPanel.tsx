@@ -5,7 +5,6 @@ import {
   CheckCircle2,
   AlertCircle,
   Sparkles,
-  Loader2,
 } from "lucide-react";
 import { CompileResponse, CompilationStatus, ExecutionStep } from "@/lib/types";
 import ErrorCard from "./ErrorCard";

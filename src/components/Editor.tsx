@@ -20,7 +20,6 @@ export default function Editor({
   readOnly = false,
 }: EditorProps) {
   const editorRef = useRef<Parameters<OnMount>[0] | null>(null);
-  const decorationsRef = useRef<string[]>([]);
 
   const handleEditorMount: OnMount = useCallback(
     (editor, monaco) => {

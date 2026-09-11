@@ -140,7 +140,11 @@ export default function LiveDemo() {
     }
   }, []);
 
-  // Visualization auto-step
+  // Visualization auto-step. advanceStep schedules its own next call via a
+  // ref so the callback never references itself during its initializer
+  // (keeps it compliant with React 19's "no access before declaration" rule).
+  const advanceStepRef = useRef<(idx: number) => void>(() => {});
+
   const advanceStep = useCallback((idx: number) => {
     if (idx >= DEMO_STEPS.length) {
       stepTimerRef.current = setTimeout(() => {
@@ -182,13 +186,22 @@ export default function LiveDemo() {
     setTimeout(animateExplanation, 50);
 
     const delay = step.swap ? 1200 : step.compare ? 1500 : 1000;
-    stepTimerRef.current = setTimeout(() => advanceStep(idx + 1), delay);
+    stepTimerRef.current = setTimeout(() => advanceStepRef.current(idx + 1), delay);
   }, [animateBars, animateExplanation]);
 
   useEffect(() => {
+    advanceStepRef.current = advanceStep;
+  }, [advanceStep]);
+
+  useEffect(() => {
     if (phase !== "visualizing") return;
-    advanceStep(0);
-    return () => { if (stepTimerRef.current) clearTimeout(stepTimerRef.current); };
+    // Defer so the state updates advanceStep performs happen in a timer
+    // callback, not synchronously inside the effect body.
+    const startTimer = setTimeout(() => advanceStep(0), 0);
+    return () => {
+      if (stepTimerRef.current) clearTimeout(stepTimerRef.current);
+      clearTimeout(startTimer);
+    };
   }, [phase, advanceStep]);
 
   const currentStep = phase === "visualizing" ? DEMO_STEPS[Math.min(currentStepIdx, DEMO_STEPS.length - 1)] : null;

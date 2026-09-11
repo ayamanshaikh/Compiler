@@ -13,7 +13,6 @@ import {
   Lightbulb,
   Braces,
   Terminal,
-  CheckCircle2,
   Layers,
   ChevronRight,
   Zap,

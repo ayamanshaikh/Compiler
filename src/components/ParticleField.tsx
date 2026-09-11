@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useMemo } from "react";
+import { useEffect, useRef } from "react";
 
 interface Particle {
   x: number;
@@ -12,26 +12,29 @@ interface Particle {
   color: string;
 }
 
+// Generated once at module scope — the render phase must stay pure
+// (React 19 lint rule: no Math.random() etc. during render).
+const PARTICLES: Particle[] = (() => {
+  const colors = [
+    "rgba(59, 130, 246, 0.4)",
+    "rgba(139, 92, 246, 0.3)",
+    "rgba(6, 182, 212, 0.3)",
+    "rgba(99, 102, 241, 0.25)",
+    "rgba(168, 85, 247, 0.2)",
+  ];
+  return Array.from({ length: 60 }, () => ({
+    x: Math.random() * 2000,
+    y: Math.random() * 2000,
+    size: Math.random() * 2 + 0.5,
+    speedX: (Math.random() - 0.5) * 0.3,
+    speedY: (Math.random() - 0.5) * 0.3,
+    opacity: Math.random() * 0.5 + 0.1,
+    color: colors[Math.floor(Math.random() * colors.length)],
+  }));
+})();
+
 export default function ParticleField() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const particles = useMemo<Particle[]>(() => {
-    const colors = [
-      "rgba(59, 130, 246, 0.4)",
-      "rgba(139, 92, 246, 0.3)",
-      "rgba(6, 182, 212, 0.3)",
-      "rgba(99, 102, 241, 0.25)",
-      "rgba(168, 85, 247, 0.2)",
-    ];
-    return Array.from({ length: 60 }, () => ({
-      x: Math.random() * 2000,
-      y: Math.random() * 2000,
-      size: Math.random() * 2 + 0.5,
-      speedX: (Math.random() - 0.5) * 0.3,
-      speedY: (Math.random() - 0.5) * 0.3,
-      opacity: Math.random() * 0.5 + 0.1,
-      color: colors[Math.floor(Math.random() * colors.length)],
-    }));
-  }, []);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -51,7 +54,7 @@ export default function ParticleField() {
     const animate = () => {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-      for (const p of particles) {
+      for (const p of PARTICLES) {
         p.x += p.speedX;
         p.y += p.speedY;
 
@@ -67,15 +70,15 @@ export default function ParticleField() {
       }
 
       // Draw connections
-      for (let i = 0; i < particles.length; i++) {
-        for (let j = i + 1; j < particles.length; j++) {
-          const dx = particles[i].x - particles[j].x;
-          const dy = particles[i].y - particles[j].y;
+      for (let i = 0; i < PARTICLES.length; i++) {
+        for (let j = i + 1; j < PARTICLES.length; j++) {
+          const dx = PARTICLES[i].x - PARTICLES[j].x;
+          const dy = PARTICLES[i].y - PARTICLES[j].y;
           const dist = Math.sqrt(dx * dx + dy * dy);
           if (dist < 150) {
             ctx.beginPath();
-            ctx.moveTo(particles[i].x, particles[i].y);
-            ctx.lineTo(particles[j].x, particles[j].y);
+            ctx.moveTo(PARTICLES[i].x, PARTICLES[i].y);
+            ctx.lineTo(PARTICLES[j].x, PARTICLES[j].y);
             ctx.strokeStyle = `rgba(59, 130, 246, ${0.06 * (1 - dist / 150)})`;
             ctx.lineWidth = 0.5;
             ctx.stroke();
@@ -91,7 +94,7 @@ export default function ParticleField() {
       window.removeEventListener("resize", resize);
       cancelAnimationFrame(animFrame);
     };
-  }, [particles]);
+  }, []);
 
   return (
     <canvas

@@ -5,7 +5,7 @@ import { BookOpen, ChevronDown, Code2, Sparkles } from "lucide-react";
 import { ALGORITHM_EXAMPLES } from "@/data/examples";
 
 interface ExampleLoaderProps {
-  onLoad: (code: string, name: string) => void;
+  onLoad: (code: string) => void;
 }
 
 export default function ExampleLoader({ onLoad }: ExampleLoaderProps) {
@@ -62,7 +62,7 @@ export default function ExampleLoader({ onLoad }: ExampleLoaderProps) {
                   <button
                     key={example.name}
                     onClick={() => {
-                      onLoad(example.code, example.name);
+                      onLoad(example.code);
                       setIsOpen(false);
                     }}
                     className="group flex w-full items-start gap-3 rounded-xl px-3 py-2.5 text-left transition-all hover:bg-white/[0.04]"

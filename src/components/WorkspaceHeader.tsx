@@ -8,6 +8,7 @@ import {
   FileCode,
   Keyboard,
   Cpu,
+  History,
 } from "lucide-react";
 
 export default function WorkspaceHeader() {
@@ -43,6 +44,15 @@ export default function WorkspaceHeader() {
       </div>
 
       <div className="flex items-center gap-2">
+        <Link
+          href="/history"
+          className="hidden items-center gap-1.5 rounded-lg border border-white/[0.06] bg-white/[0.03] px-2.5 py-1.5 text-xs text-zinc-400 transition-colors hover:text-white sm:flex"
+          title="View execution history"
+        >
+          <History size={13} className="text-zinc-500" />
+          History
+        </Link>
+
         <div
           className="hidden items-center gap-1.5 rounded-lg border border-white/[0.06] bg-white/[0.03] px-2.5 py-1.5 text-xs text-zinc-400 sm:flex"
           title="Language: Java"

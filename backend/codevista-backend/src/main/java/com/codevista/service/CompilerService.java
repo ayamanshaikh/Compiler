@@ -2,10 +2,12 @@ package com.codevista.service;
 
 import com.codevista.execution.ExecutionTraceService;
 import com.codevista.model.ExecutionStep;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
-import java.io.BufferedReader;
-import java.io.InputStreamReader;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -15,19 +17,82 @@ import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+/**
+ * Compiles and executes user-supplied Java code in an isolated temporary
+ * directory using real {@code javac}/{@code java} subprocesses.
+ *
+ * <p>Resource limits are enforced at every layer:
+ * <ul>
+ *   <li>source code is capped ({@code codevista.execution.max-code-length});</li>
+ *   <li>compilation and execution each have their own timeout
+ *       ({@code codevista.compilation.timeout-seconds} /
+ *       {@code codevista.execution.timeout-seconds});</li>
+ *   <li>output is read concurrently with the timeout and capped
+ *       ({@code codevista.execution.max-output-length}), so a chatty or
+ *       infinite program can neither deadlock the pipe buffer nor exhaust
+ *       memory — the subprocess is forcibly destroyed on timeout;</li>
+ *   <li>the JVM heap of the user program is bounded
+ *       ({@code codevista.execution.java-memory-limit}).</li>
+ * </ul>
+ *
+ * <p>Note: subprocess isolation alone is <b>not</b> a production-grade
+ * sandbox — a local filesystem/network is still reachable from user code.
+ * For public deployment the execution step must run inside a container or
+ * microVM (see README, "Security").
+ */
 @Service
 public class CompilerService {
 
     private static final Pattern COMPILER_ERROR_PATTERN =
             Pattern.compile("Main\\.java:(\\d+)(?::\\d+)?\\s*(error|warning)?\\s*(.*)");
 
-    private final ExecutionTraceService executionTraceService;
+    private static final Pattern RUNTIME_LINE_PATTERN =
+            Pattern.compile("Main\\.java:(\\d+)");
 
-    public CompilerService(ExecutionTraceService executionTraceService) {
+    private static final String OUTPUT_TRUNCATED_MARKER =
+            "\n… [output truncated]";
+
+    private final ExecutionTraceService executionTraceService;
+    private final int compileTimeoutSeconds;
+    private final int runTimeoutSeconds;
+    private final int maxCodeLength;
+    private final int maxOutputLength;
+    private final String javaMemoryLimit;
+
+    public CompilerService(
+            ExecutionTraceService executionTraceService,
+            @Value("${codevista.compilation.timeout-seconds:15}") int compileTimeoutSeconds,
+            @Value("${codevista.execution.timeout-seconds:10}") int runTimeoutSeconds,
+            @Value("${codevista.execution.max-code-length:100000}") int maxCodeLength,
+            @Value("${codevista.execution.max-output-length:131072}") int maxOutputLength,
+            @Value("${codevista.execution.java-memory-limit:256m}") String javaMemoryLimit
+    ) {
         this.executionTraceService = executionTraceService;
+        this.compileTimeoutSeconds = compileTimeoutSeconds;
+        this.runTimeoutSeconds = runTimeoutSeconds;
+        this.maxCodeLength = maxCodeLength;
+        this.maxOutputLength = maxOutputLength;
+        this.javaMemoryLimit = javaMemoryLimit;
     }
 
     public CompilationResult compileCode(String code) {
+
+        if (code == null || code.trim().isEmpty()) {
+            return new CompilationResult(
+                    false,
+                    "No code provided.",
+                    ""
+            );
+        }
+
+        if (code.length() > maxCodeLength) {
+            return new CompilationResult(
+                    false,
+                    "Source code is too large (maximum "
+                            + maxCodeLength + " characters).",
+                    ""
+            );
+        }
 
         Path tempDirectory = null;
 
@@ -43,41 +108,32 @@ public class CompilerService {
             );
 
             // Compile Java code (with -g so the execution tracer can later
-            // read local variable names and line numbers from the class file)
+            // read local variable names and line numbers from the class file).
             ProcessBuilder compileBuilder = new ProcessBuilder(
                     "javac",
                     "-Xdiags:verbose",
                     "-g",
+                    "-J-Xmx" + javaMemoryLimit,
                     "Main.java"
             );
 
             compileBuilder.directory(tempDirectory.toFile());
             compileBuilder.redirectErrorStream(true);
 
-            Process compileProcess = compileBuilder.start();
+            ProcessOutput compileOut =
+                    runAndCapture(compileBuilder, compileTimeoutSeconds);
 
-            String compileOutput = readProcessOutput(compileProcess);
-
-            boolean finished = compileProcess.waitFor(
-                    15,
-                    TimeUnit.SECONDS
-            );
-
-            if (!finished) {
-
-                compileProcess.destroyForcibly();
-
+            if (compileOut.timedOut) {
                 return new CompilationResult(
                         false,
-                        "Compilation timed out.",
+                        "Compilation timed out after "
+                                + compileTimeoutSeconds + " seconds.",
                         ""
                 );
             }
 
-            if (compileProcess.exitValue() != 0) {
-
-                ParsedError parsed = parseCompilerError(compileOutput);
-
+            if (compileOut.exitCode != 0) {
+                ParsedError parsed = parseCompilerError(compileOut.text);
                 return new CompilationResult(
                         false,
                         parsed.formatted,
@@ -87,41 +143,35 @@ public class CompilerService {
                 );
             }
 
-            // Run Java program
+            // Run Java program with a bounded heap.
             ProcessBuilder runBuilder = new ProcessBuilder(
                     "java",
+                    "-Xmx" + javaMemoryLimit,
                     "Main"
             );
 
             runBuilder.directory(tempDirectory.toFile());
             runBuilder.redirectErrorStream(true);
 
-            Process runProcess = runBuilder.start();
+            ProcessOutput runOut =
+                    runAndCapture(runBuilder, runTimeoutSeconds);
 
-            String output = readProcessOutput(runProcess);
-
-            boolean runFinished = runProcess.waitFor(
-                    10,
-                    TimeUnit.SECONDS
-            );
-
-            if (!runFinished) {
-
-                runProcess.destroyForcibly();
-
+            if (runOut.timedOut) {
                 return new CompilationResult(
                         false,
-                        "Runtime Error: Program execution timed out (10 second limit).",
-                        ""
+                        "Runtime Error: Program execution timed out "
+                                + "(limit " + runTimeoutSeconds + " seconds).",
+                        runOut.text
                 );
             }
 
-            if (runProcess.exitValue() != 0) {
-
+            if (runOut.exitCode != 0) {
                 return new CompilationResult(
                         false,
-                        "Runtime Error: " + extractRuntimeMessage(output),
-                        output
+                        "Runtime Error: " + extractRuntimeMessage(runOut.text),
+                        runOut.text,
+                        extractRuntimeLine(runOut.text),
+                        "RUNTIME"
                 );
             }
 
@@ -144,7 +194,7 @@ public class CompilerService {
             return new CompilationResult(
                     true,
                     "Code compiled and executed successfully.",
-                    output,
+                    runOut.text,
                     steps,
                     truncated
             );
@@ -180,6 +230,72 @@ public class CompilerService {
         }
     }
 
+    /**
+     * Launches a process, reads its merged output concurrently on a daemon
+     * thread (so the child can never deadlock on a full pipe buffer), waits
+     * up to {@code timeoutSeconds}, and forcibly destroys the process if it
+     * does not finish in time. Output is capped to bound memory use.
+     */
+    private ProcessOutput runAndCapture(ProcessBuilder builder, long timeoutSeconds)
+            throws IOException {
+
+        Process process = builder.start();
+
+        ByteArrayOutputStream buffer = new ByteArrayOutputStream();
+        boolean[] overLimit = { false };
+
+        Thread reader = new Thread(() -> {
+            try (InputStream in = process.getInputStream()) {
+                byte[] chunk = new byte[8192];
+                int n;
+                while ((n = in.read(chunk)) != -1) {
+                    if (buffer.size() + n > maxOutputLength) {
+                        overLimit[0] = true;
+                        int room = maxOutputLength - buffer.size();
+                        if (room > 0) buffer.write(chunk, 0, room);
+                    } else {
+                        buffer.write(chunk, 0, n);
+                    }
+                }
+            } catch (Exception ignored) {
+                // Stream closed because the process was destroyed — fine.
+            }
+        }, "codevista-process-reader");
+        reader.setDaemon(true);
+        reader.start();
+
+        boolean finished;
+        try {
+            finished = process.waitFor(timeoutSeconds, TimeUnit.SECONDS);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            process.destroyForcibly();
+            throw new IOException("Interrupted while waiting for subprocess", e);
+        }
+
+        if (!finished) {
+            process.destroyForcibly();
+            try {
+                process.waitFor(2, TimeUnit.SECONDS);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+        }
+
+        try {
+            reader.join(2000);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+
+        String text = buffer.toString(StandardCharsets.UTF_8).trim();
+        if (overLimit[0]) {
+            text += OUTPUT_TRUNCATED_MARKER;
+        }
+
+        return new ProcessOutput(text, finished ? process.exitValue() : -1, !finished);
+    }
+
     private ParsedError parseCompilerError(String error) {
 
         if (error == null || error.isBlank()) {
@@ -199,7 +315,6 @@ public class CompilerService {
             if (matcher.find()) {
 
                 long lineNumber = Long.parseLong(matcher.group(1));
-                String severity = matcher.group(2);
                 String message = matcher.group(3).trim();
 
                 if (firstLine == 0) {
@@ -242,21 +357,67 @@ public class CompilerService {
 
         String lower = message.toLowerCase();
 
+        // ── Methods & constructors ─────────────────────────────────────
+        // Constructor messages also contain "cannot be applied", so they
+        // must be checked before the generic method rule.
+        if (lower.contains("no suitable constructor found")) return "CONSTRUCTOR_MISMATCH";
+        if (lower.contains("constructor") && lower.contains("cannot be applied")) return "CONSTRUCTOR_MISMATCH";
+        if (lower.contains("cannot find constructor")) return "CONSTRUCTOR_NOT_FOUND";
+        if (lower.contains("cannot be applied to given types")) return "METHOD_ARGUMENT_MISMATCH";
+        if (lower.contains("no suitable method found")) return "NO_SUITABLE_METHOD";
+        if (lower.contains("missing return")) return "MISSING_RETURN";
+        if (lower.contains("non-static method")) return "NON_STATIC_METHOD";
+
+        // ── Generics & lambdas ─────────────────────────────────────────
+        if (lower.contains("inference variable")) return "GENERIC_INFERENCE";
+        if (lower.contains("type argument")) return "GENERIC_TYPE_ARGUMENT";
+        if (lower.contains("not a functional interface")) return "NOT_FUNCTIONAL_INTERFACE";
+
+        // ── Inheritance & OOP ──────────────────────────────────────────
+        if (lower.contains("is not abstract and does not override")) return "ABSTRACT_NOT_IMPLEMENTED";
+        if (lower.contains("cannot override")) return "CANNOT_OVERRIDE";
+        if (lower.contains("method does not override")) return "OVERRIDE_MISMATCH";
+
+        // ── Scope & statics ────────────────────────────────────────────
+        if (lower.contains("referenced from a static context")) return "STATIC_CONTEXT_REFERENCE";
+        if (lower.contains("non-static variable")) return "STATIC_CONTEXT_REFERENCE";
+        if (lower.contains("static field")) return "STATIC_FIELD_ACCESS";
+        if (lower.contains("already defined")) return "VARIABLE_ALREADY_DEFINED";
+
+        // ── Classes & packages ─────────────────────────────────────────
+        if (lower.contains("duplicate class")) return "DUPLICATE_CLASS";
+        if (lower.contains("should be declared in a file named")) return "PUBLIC_CLASS_FILENAME";
+        if (lower.contains("package") && lower.contains("does not exist")) return "PACKAGE_NOT_FOUND";
+
+        // ── Control flow ───────────────────────────────────────────────
+        if (lower.contains("unreachable statement")) return "UNREACHABLE_STATEMENT";
+        if (lower.contains("break outside")) return "BREAK_OUTSIDE_LOOP";
+        if (lower.contains("continue outside")) return "CONTINUE_OUTSIDE_LOOP";
+
+        // ── Exceptions ─────────────────────────────────────────────────
+        if (lower.contains("unreported exception")) return "UNREPORTED_EXCEPTION";
+
+        // ── Types & operators ──────────────────────────────────────────
+        if (lower.contains("incomparable types")) return "INCOMPARABLE_TYPES";
+        if (lower.contains("bad operand types")) return "BAD_OPERAND_TYPES";
+        if (lower.contains("operator") && lower.contains("cannot be applied")) return "OPERATOR_APPLICATION";
+        if (lower.contains("illegal start of type")) return "ILLEGAL_START_TYPE";
+
+        // ── Arrays ─────────────────────────────────────────────────────
+        if (lower.contains("array dimension missing")) return "ARRAY_DIMENSION_MISSING";
+
+        // ── Classic syntax / basic errors ──────────────────────────────
         if (lower.contains("';' expected")) return "MISSING_SEMICOLON";
         if (lower.contains("cannot find symbol")) return "CANNOT_FIND_SYMBOL";
         if (lower.contains("incompatible types")) return "INCOMPATIBLE_TYPES";
         if (lower.contains("reached end of file")) return "REACHED_END_OF_FILE";
         if (lower.contains("illegal start of expression")) return "ILLEGAL_START";
         if (lower.contains("class, interface, enum")) return "UNEXPECTED_TOKEN";
-        if (lower.contains("missing return")) return "MISSING_RETURN";
         if (lower.contains("variable might not have been initialized")) return "UNINITIALIZED_VARIABLE";
-        if (lower.contains("non-static method")) return "NON_STATIC_METHOD";
-        if (lower.contains("static field")) return "STATIC_FIELD_ACCESS";
         if (lower.contains("array required")) return "ARRAY_REQUIRED";
         if (lower.contains("string cannot be converted")) return "TYPE_MISMATCH";
         if (lower.contains("unclosed")) return "UNCLOSED_BLOCK";
         if (lower.contains("illegal character")) return "ILLEGAL_CHARACTER";
-        if (lower.contains("method does not override")) return "OVERRIDE_MISMATCH";
 
         return "UNKNOWN";
     }
@@ -298,31 +459,19 @@ public class CompilerService {
         return message.toString();
     }
 
-    private String readProcessOutput(Process process)
-            throws Exception {
+    /** Finds the source line of the exception from the stack trace. */
+    private long extractRuntimeLine(String output) {
 
-        StringBuilder output = new StringBuilder();
+        if (output == null) return 0;
 
-        try (
-                BufferedReader reader =
-                        new BufferedReader(
-                                new InputStreamReader(
-                                        process.getInputStream(),
-                                        StandardCharsets.UTF_8
-                                )
-                        )
-        ) {
-
-            String line;
-
-            while ((line = reader.readLine()) != null) {
-
-                output.append(line)
-                        .append(System.lineSeparator());
+        Matcher matcher = RUNTIME_LINE_PATTERN.matcher(output);
+        if (matcher.find()) {
+            try {
+                return Long.parseLong(matcher.group(1));
+            } catch (NumberFormatException ignored) {
             }
         }
-
-        return output.toString().trim();
+        return 0;
     }
 
     public static class CompilationResult {
@@ -420,6 +569,19 @@ public class CompilerService {
             this.formatted = formatted;
             this.lineNumber = lineNumber;
             this.errorType = errorType;
+        }
+    }
+
+    private static final class ProcessOutput {
+
+        final String text;
+        final int exitCode;
+        final boolean timedOut;
+
+        ProcessOutput(String text, int exitCode, boolean timedOut) {
+            this.text = text;
+            this.exitCode = exitCode;
+            this.timedOut = timedOut;
         }
     }
 }

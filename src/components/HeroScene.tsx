@@ -1,9 +1,47 @@
 "use client";
 
 import { Canvas, useFrame } from "@react-three/fiber";
-import { Float, Text3D, Center, RoundedBox, MeshDistortMaterial } from "@react-three/drei";
+import { Float, RoundedBox, MeshDistortMaterial } from "@react-three/drei";
 import { useRef, useMemo } from "react";
 import * as THREE from "three";
+
+/**
+ * Random decorative values are generated once at module scope rather than
+ * during render, which keeps the components pure (React 19 lint rule:
+ * no impure function calls — e.g. Math.random() — in the render phase).
+ */
+
+const FLOATING_PARTICLE_COUNT = 40;
+const FLOATING_PARTICLE_POSITIONS: Float32Array = (() => {
+  const pos = new Float32Array(FLOATING_PARTICLE_COUNT * 3);
+  for (let i = 0; i < FLOATING_PARTICLE_COUNT; i++) {
+    pos[i * 3] = (Math.random() - 0.5) * 12;
+    pos[i * 3 + 1] = (Math.random() - 0.5) * 8;
+    pos[i * 3 + 2] = (Math.random() - 0.5) * 8;
+  }
+  return pos;
+})();
+
+interface SmallCubeData {
+  position: [number, number, number];
+  color: string;
+  scale: number;
+  speed: number;
+}
+
+const SMALL_CUBE_DATA: SmallCubeData[] = (() => {
+  const colors = ["#3b82f6", "#8b5cf6", "#06b6d4", "#10b981"];
+  return Array.from({ length: 8 }, (_, i) => ({
+    position: [
+      Math.cos((i / 8) * Math.PI * 2) * 3.2,
+      Math.sin((i / 8) * Math.PI * 2) * 1.5,
+      (Math.random() - 0.5) * 2,
+    ] as [number, number, number],
+    color: colors[i % 4],
+    scale: 0.15 + Math.random() * 0.1,
+    speed: 0.5 + Math.random() * 1.5,
+  }));
+})();
 
 function CodeCube() {
   const meshRef = useRef<THREE.Mesh>(null);
@@ -39,18 +77,12 @@ function CodeCube() {
 }
 
 function FloatingParticles() {
-  const count = 40;
-  const positions = useMemo(() => {
-    const pos = new Float32Array(count * 3);
-    for (let i = 0; i < count; i++) {
-      pos[i * 3] = (Math.random() - 0.5) * 12;
-      pos[i * 3 + 1] = (Math.random() - 0.5) * 8;
-      pos[i * 3 + 2] = (Math.random() - 0.5) * 8;
-    }
-    return pos;
-  }, []);
-
   const pointsRef = useRef<THREE.Points>(null);
+
+  const positions = useMemo(
+    () => FLOATING_PARTICLE_POSITIONS,
+    []
+  );
 
   useFrame((state) => {
     if (pointsRef.current) {
@@ -65,7 +97,7 @@ function FloatingParticles() {
         <bufferAttribute
           attach="attributes-position"
           args={[positions, 3]}
-          count={count}
+          count={FLOATING_PARTICLE_COUNT}
           itemSize={3}
         />
       </bufferGeometry>
@@ -115,22 +147,9 @@ function SmallCubes() {
     }
   });
 
-  const cubeData = useMemo(() => {
-    return Array.from({ length: 8 }, (_, i) => ({
-      position: [
-        Math.cos((i / 8) * Math.PI * 2) * 3.2,
-        Math.sin((i / 8) * Math.PI * 2) * 1.5,
-        (Math.random() - 0.5) * 2,
-      ] as [number, number, number],
-      color: ["#3b82f6", "#8b5cf6", "#06b6d4", "#10b981"][i % 4],
-      scale: 0.15 + Math.random() * 0.1,
-      speed: 0.5 + Math.random() * 1.5,
-    }));
-  }, []);
-
   return (
     <group ref={cubesRef}>
-      {cubeData.map((cube, i) => (
+      {SMALL_CUBE_DATA.map((cube, i) => (
         <Float key={i} speed={cube.speed} floatIntensity={0.4}>
           <mesh position={cube.position}>
             <boxGeometry args={[cube.scale, cube.scale, cube.scale]} />

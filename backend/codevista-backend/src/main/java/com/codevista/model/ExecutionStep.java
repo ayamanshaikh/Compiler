@@ -18,9 +18,11 @@ public class ExecutionStep {
     private String explanation;
     private Map<String, String> variables = new LinkedHashMap<>();
     private Map<String, List<Integer>> arrays = new LinkedHashMap<>();
+    private Map<String, TypedArray> typedArrays = new LinkedHashMap<>();
     private List<Integer> highlights = List.of();
     private Comparison comparison;
     private Swap swap;
+    private int callDepth;
 
     public ExecutionStep() {
     }
@@ -81,6 +83,14 @@ public class ExecutionStep {
         this.arrays = arrays;
     }
 
+    public Map<String, TypedArray> getTypedArrays() {
+        return typedArrays;
+    }
+
+    public void setTypedArrays(Map<String, TypedArray> typedArrays) {
+        this.typedArrays = typedArrays;
+    }
+
     public List<Integer> getHighlights() {
         return highlights;
     }
@@ -105,20 +115,59 @@ public class ExecutionStep {
         this.swap = swap;
     }
 
+    public int getCallDepth() {
+        return callDepth;
+    }
+
+    public void setCallDepth(int callDepth) {
+        this.callDepth = callDepth;
+    }
+
+    /**
+     * A non-int array snapshot (double[], String[], boolean[], ...). Values
+     * are stored as strings so any element type can be represented; the
+     * frontend renders numeric values as bars and everything else as chips.
+     */
+    public static class TypedArray {
+        private String type;
+        private List<String> values;
+
+        public TypedArray() {
+        }
+
+        public String getType() {
+            return type;
+        }
+
+        public void setType(String type) {
+            this.type = type;
+        }
+
+        public List<String> getValues() {
+            return values;
+        }
+
+        public void setValues(List<String> values) {
+            this.values = values;
+        }
+    }
+
     public static class Comparison {
         private int left;
         private int right;
         private List<Integer> indices;
         private boolean result;
+        private String operator;
 
         public Comparison() {
         }
 
-        public Comparison(int left, int right, List<Integer> indices, boolean result) {
+        public Comparison(int left, int right, List<Integer> indices, boolean result, String operator) {
             this.left = left;
             this.right = right;
             this.indices = indices;
             this.result = result;
+            this.operator = operator;
         }
 
         public int getLeft() {
@@ -151,6 +200,14 @@ public class ExecutionStep {
 
         public void setResult(boolean result) {
             this.result = result;
+        }
+
+        public String getOperator() {
+            return operator;
+        }
+
+        public void setOperator(String operator) {
+            this.operator = operator;
         }
     }
 

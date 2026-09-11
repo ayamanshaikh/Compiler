@@ -21,9 +21,21 @@ interface ControlBarProps {
   onStopVisualize: () => void;
 }
 
-function useButtonPress() {
+/**
+ * A button with a small bounce micro-interaction. The ref is only touched
+ * inside the click handler (never during render), which keeps it compliant
+ * with React 19's rules-of-hooks lint checks.
+ */
+function PressButton({
+  onPress,
+  children,
+  ...rest
+}: React.ButtonHTMLAttributes<HTMLButtonElement> & {
+  onPress: () => void;
+}) {
   const ref = useRef<HTMLButtonElement>(null);
-  const handleClick = (cb: () => void) => () => {
+
+  const handleClick = () => {
     if (ref.current) {
       animate(ref.current, {
         scale: [1, 0.93, 1.04, 1],
@@ -31,9 +43,14 @@ function useButtonPress() {
         ease: "outElastic(1, 0.5)",
       });
     }
-    cb();
+    onPress();
   };
-  return { ref, handleClick };
+
+  return (
+    <button ref={ref} onClick={handleClick} {...rest}>
+      {children}
+    </button>
+  );
 }
 
 export default function ControlBar({
@@ -45,11 +62,6 @@ export default function ControlBar({
   onReset,
   onStopVisualize,
 }: ControlBarProps) {
-  const runBtn = useButtonPress();
-  const vizBtn = useButtonPress();
-  const closeBtn = useButtonPress();
-  const resetBtn = useButtonPress();
-
   return (
     <div
       className="glass-surface flex items-center justify-between border-t border-white/[0.04] px-5 py-3"
@@ -58,28 +70,24 @@ export default function ControlBar({
     >
       <div className="flex items-center gap-2.5">
         {isVisualizing ? (
-          <>
-            <button
-              ref={closeBtn.ref}
-              onClick={closeBtn.handleClick(onStopVisualize)}
-              className="btn-3d btn-3d-sm"
-              style={{
-                background: "linear-gradient(135deg, rgba(239, 68, 68, 0.15) 0%, rgba(244, 63, 94, 0.1) 100%)",
-                color: "#fca5a5",
-                border: "1px solid rgba(239, 68, 68, 0.25)",
-                boxShadow: "0 4px 20px rgba(239, 68, 68, 0.15), inset 0 1px 0 rgba(255,255,255,0.05)",
-              }}
-              aria-label="Close visualizer"
-            >
-              <EyeOff size={14} />
-              Close Visualizer
-            </button>
-          </>
+          <PressButton
+            onPress={onStopVisualize}
+            className="btn-3d btn-3d-sm"
+            style={{
+              background: "linear-gradient(135deg, rgba(239, 68, 68, 0.15) 0%, rgba(244, 63, 94, 0.1) 100%)",
+              color: "#fca5a5",
+              border: "1px solid rgba(239, 68, 68, 0.25)",
+              boxShadow: "0 4px 20px rgba(239, 68, 68, 0.15), inset 0 1px 0 rgba(255,255,255,0.05)",
+            }}
+            aria-label="Close visualizer"
+          >
+            <EyeOff size={14} />
+            Close Visualizer
+          </PressButton>
         ) : (
           <>
-            <button
-              ref={runBtn.ref}
-              onClick={runBtn.handleClick(onRun)}
+            <PressButton
+              onPress={onRun}
               disabled={status === "compiling"}
               className={`btn-3d ${
                 status === "compiling"
@@ -95,11 +103,10 @@ export default function ControlBar({
               ) : (
                 <><Play size={14} /> Run Code</>
               )}
-            </button>
+            </PressButton>
 
-            <button
-              ref={vizBtn.ref}
-              onClick={vizBtn.handleClick(onVisualize)}
+            <PressButton
+              onPress={onVisualize}
               disabled={!canVisualize}
               className="btn-3d btn-3d-ghost btn-3d-sm"
               aria-label="Visualize execution"
@@ -107,19 +114,18 @@ export default function ControlBar({
             >
               <Eye size={14} />
               Visualize
-            </button>
+            </PressButton>
           </>
         )}
 
-        <button
-          ref={resetBtn.ref}
-          onClick={resetBtn.handleClick(onReset)}
+        <PressButton
+          onPress={onReset}
           className="rounded-lg p-2 text-zinc-500 transition-all hover:bg-white/5 hover:text-zinc-300"
           title="Reset code to default"
           aria-label="Reset code"
         >
           <RotateCcw size={14} />
-        </button>
+        </PressButton>
       </div>
 
       <div className="flex items-center gap-3 text-[11px] text-zinc-600">

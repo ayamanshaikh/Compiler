@@ -5,4 +5,6 @@ D:\Compiler\backend\codevista-backend\src\main\java\com\codevista\execution\Exec
 D:\Compiler\backend\codevista-backend\src\main\java\com\codevista\model\CompileRequest.java
 D:\Compiler\backend\codevista-backend\src\main\java\com\codevista\model\CompileResponse.java
 D:\Compiler\backend\codevista-backend\src\main\java\com\codevista\model\ExecutionStep.java
+D:\Compiler\backend\codevista-backend\src\main\java\com\codevista\model\HistoryEntry.java
 D:\Compiler\backend\codevista-backend\src\main\java\com\codevista\service\CompilerService.java
+D:\Compiler\backend\codevista-backend\src\main\java\com\codevista\service\HistoryService.java

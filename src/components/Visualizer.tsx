@@ -8,11 +8,8 @@ import {
   SkipForward,
   RotateCcw,
   Zap,
-  ArrowLeftRight,
   GraduationCap,
   Code,
-  HelpCircle,
-  ChevronRight,
   Sparkles,
   Brain,
   Target,
@@ -46,7 +43,7 @@ export default function Visualizer({
     if (currentStep) {
       onStepChange?.(currentStep);
     }
-  }, [currentStepIndex, steps, onStepChange]);
+  }, [currentStep, currentStepIndex, steps, onStepChange]);
 
   const goToStep = useCallback(
     (index: number) => {
@@ -111,21 +108,30 @@ export default function Visualizer({
 
   const getComparisonExplanation = () => {
     if (!currentStep.comparison) return null;
-    const { left, right, result } = currentStep.comparison;
+    const { left, right, result, indices, operator } = currentStep.comparison;
+    const op = operator || (result ? ">" : "<=");
+    const isArrayComparison = indices.length > 0;
 
     if (learningMode) {
       return {
         what: `The program compares ${left} and ${right}.`,
-        why: result
-          ? `${left} is greater than ${right}, so the condition is true.`
-          : `${left} is not greater than ${right}, so the condition is false.`,
-        result: result ? "The values will be swapped." : "No swap is needed.",
+        why: `${left} ${op} ${right} is ${result ? "true" : "false"}.`,
+        result: isArrayComparison
+          ? result
+            ? "The values will be swapped."
+            : "No swap is needed."
+          : result
+            ? "The condition is true, so the code inside runs."
+            : "The condition is false, so the code inside is skipped.",
       };
     }
 
+    const idxText = isArrayComparison
+      ? ` at indices ${indices.join(" and ")}`
+      : "";
     return {
       what: `Evaluating: ${currentStep.code}`,
-      why: `Comparing values at indices ${currentStep.highlights.join(" and ")}: ${left} vs ${right}.`,
+      why: `Comparing values${idxText}: ${left} ${op} ${right}.`,
       result: result ? "Condition true — entering block." : "Condition false — skipping block.",
     };
   };
@@ -168,6 +174,14 @@ export default function Visualizer({
           <span className="rounded-lg bg-zinc-500/15 px-2 py-1 text-[10px] font-medium text-zinc-400 ring-1 ring-white/[0.04]">
             {currentStep.action}
           </span>
+          {(currentStep.callDepth ?? 0) > 1 && (
+            <span
+              className="rounded-lg bg-purple-500/15 px-2 py-1 text-[10px] font-semibold text-purple-300 ring-1 ring-purple-500/10"
+              title="Current call depth (recursion / method calls)"
+            >
+              Depth {currentStep.callDepth}
+            </span>
+          )}
         </div>
         <pre className="overflow-x-auto whitespace-pre-wrap rounded-lg bg-[#06090f]/60 p-3 font-mono text-[12.5px] leading-5 text-zinc-300 ring-1 ring-white/[0.04]">
           {currentStep.code}
@@ -300,35 +314,6 @@ export default function Visualizer({
                 })}
               </div>
 
-              {/* Comparison indicator */}
-              {currentStep.comparison && (
-                <div className="flex items-center justify-center gap-2 rounded-lg bg-white/[0.02] p-2.5 ring-1 ring-white/[0.04]">
-                  <ArrowLeftRight size={13} className="text-zinc-500" />
-                  <span className="font-mono text-[13px] text-zinc-400">
-                    {currentStep.comparison.left}{" "}
-                    <span
-                      className={`font-bold ${
-                        currentStep.comparison.result
-                          ? "text-emerald-400"
-                          : "text-red-400"
-                      }`}
-                    >
-                      {currentStep.comparison.result ? ">" : "<="}
-                    </span>{" "}
-                    {currentStep.comparison.right}
-                  </span>
-                  <span
-                    className={`rounded-lg px-2.5 py-1 text-[11px] font-bold ${
-                      currentStep.comparison.result
-                        ? "bg-emerald-500/15 text-emerald-300 ring-1 ring-emerald-500/15"
-                        : "bg-red-500/15 text-red-300 ring-1 ring-red-500/15"
-                    }`}
-                  >
-                    {currentStep.comparison.result ? "TRUE" : "FALSE"}
-                  </span>
-                </div>
-              )}
-
               {/* Swap indicator */}
               {currentStep.swap && (
                 <div className="flex items-center gap-2 rounded-lg bg-emerald-500/[0.04] p-2.5 ring-1 ring-emerald-500/10">
@@ -340,6 +325,104 @@ export default function Visualizer({
               )}
             </div>
           ))}
+        </div>
+      )}
+
+      {/* Standalone condition evaluation (works for scalar comparisons too) */}
+      {currentStep.comparison && (
+        <div className="flex flex-wrap items-center justify-center gap-2 rounded-xl bg-white/[0.02] p-3 ring-1 ring-white/[0.04]">
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-zinc-600">
+            Condition
+          </span>
+          <span className="font-mono text-[13px] text-zinc-300">
+            {currentStep.comparison.left}{" "}
+            <span
+              className={`font-bold ${
+                currentStep.comparison.result ? "text-emerald-400" : "text-red-400"
+              }`}
+            >
+              {currentStep.comparison.operator ||
+                (currentStep.comparison.result ? ">" : "<=")}
+            </span>{" "}
+            {currentStep.comparison.right}
+          </span>
+          <span
+            className={`rounded-lg px-2.5 py-1 text-[11px] font-bold ${
+              currentStep.comparison.result
+                ? "bg-emerald-500/15 text-emerald-300 ring-1 ring-emerald-500/15"
+                : "bg-red-500/15 text-red-300 ring-1 ring-red-500/15"
+            }`}
+          >
+            {currentStep.comparison.result ? "TRUE" : "FALSE"}
+          </span>
+        </div>
+      )}
+
+      {/* Typed (non-int) array visualization — bars for numbers, chips for strings */}
+      {Object.keys(currentStep.typedArrays ?? {}).length > 0 && (
+        <div className="glass-surface rounded-xl p-4">
+          <div className="mb-3 flex items-center gap-1.5">
+            <Braces size={12} className="text-zinc-500" />
+            <span className="text-[11px] font-semibold uppercase tracking-widest text-zinc-500">
+              Typed Data
+            </span>
+          </div>
+          {Object.entries(currentStep.typedArrays ?? {}).map(([name, ta]) => {
+            const numericTypes = new Set(["int", "long", "double", "float", "short", "byte"]);
+            const nums = ta.values
+              .map((v) => parseFloat(v))
+              .filter((n) => !isNaN(n));
+            const maxAbs = Math.max(...nums.map((n) => Math.abs(n)), 1);
+            const isNumeric = numericTypes.has(ta.type);
+
+            return (
+              <div key={name} className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="font-mono text-[12px] text-zinc-500">{name}</span>
+                  <span className="rounded bg-white/[0.03] px-1.5 py-0.5 text-[10px] text-zinc-600 ring-1 ring-white/[0.04]">
+                    {ta.type}[]
+                  </span>
+                </div>
+                <div className="flex flex-wrap items-end gap-3 rounded-xl bg-[#06090f]/40 p-4">
+                  {ta.values.map((val, idx) => {
+                    if (isNumeric) {
+                      const numeric = parseFloat(val);
+                      const barHeight = Math.max((Math.abs(numeric) / maxAbs) * 70, 14);
+                      return (
+                        <div key={idx} className="flex flex-col items-center gap-1.5">
+                          <span className="font-mono text-[11px] font-bold text-purple-300">
+                            {val}
+                          </span>
+                          <div
+                            className="array-bar-3d"
+                            style={{
+                              width: "30px",
+                              height: `${barHeight}px`,
+                              background:
+                                "linear-gradient(180deg, rgba(139, 92, 246, 0.55) 0%, rgba(139, 92, 246, 0.15) 100%)",
+                              boxShadow: "0 4px 14px rgba(139, 92, 246, 0.15), inset 0 1px 0 rgba(255,255,255,0.15)",
+                            }}
+                          />
+                          <span className="text-[9px] text-zinc-700">[{idx}]</span>
+                        </div>
+                      );
+                    }
+                    return (
+                      <div key={idx} className="flex flex-col items-center gap-1.5">
+                        <span
+                          className="max-w-[130px] truncate rounded-lg border border-white/[0.06] bg-white/[0.03] px-2.5 py-1.5 font-mono text-[11px] text-zinc-300"
+                          title={val}
+                        >
+                          {val}
+                        </span>
+                        <span className="text-[9px] text-zinc-700">[{idx}]</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
         </div>
       )}
 

@@ -1,105 +1,148 @@
-# CodeVista AI — Changes in this pass
+# CodeVista AI — Change log
 
-This pass focused on closing the biggest gap between the product spec and
-the existing prototype: **the Execution Visualizer was always showing
-hard-coded bubble-sort demo data**, no matter what code the user actually
-ran. That violates the project's own rules (never fake execution results;
-never hard-code explanations to one demo algorithm) and undercut the
-product's signature feature.
+## Visualization + error-intelligence expansion
 
-## New: a real execution-trace engine (backend)
+This pass widens what CodeVista can visualize and explain across the major
+topics of introductory Java: more data types, conditions, recursion,
+objects, helper classes, and dozens more compiler/runtime error categories.
 
-Added a generic, algorithm-agnostic tracer that actually runs the user's
-compiled program under Java's debugger interface (JDI) and reports what
-really happened, line by line.
+### Visualization breadth (backend tracer + frontend)
 
-- `backend/.../execution/ExecutionTraceService.java` — launches the
-  compiled `Main` class via `com.sun.jdi`, single-steps through it
-  (restricted to the user's own class, so it doesn't step into JDK
-  internals), and reads real local variable and array values out of the
-  live JVM at each line. Capped at 400 steps / 8 seconds so a runaway loop
-  can't hang the server; if hit, the trace is marked `truncated` rather
-  than silently cut off.
-- `backend/.../analysis/ExplanationGenerator.java` — classifies each line
-  (loop, comparison, assignment, declaration, output, return, structure)
-  from its shape, and generates a plain-language explanation from the
-  *actual* values captured — e.g. "Comparing 5 and 3, the condition is
-  true." Nothing here is specific to bubble sort; it was also verified
-  against an unrelated factorial/comparison program.
-- Swap detection is done generically by diffing array snapshots across a
-  run of consecutive changing steps, so it also catches the common
-  3-line `temp = a[j]; a[j] = a[j+1]; a[j+1] = temp;` pattern, not just
-  single-line swaps.
-- `model/ExecutionStep.java` — matches the frontend's `ExecutionStep`
-  contract exactly (`step`, `lineNumber`, `code`, `action`, `explanation`,
-  `variables`, `arrays`, `highlights`, optional `comparison`/`swap`).
-- `CompilerService` now compiles with `-g` (needed for JDI to see variable
-  names), and after a successful run, generates the trace before cleaning
-  up the temp directory. Tracing is wrapped so a tracer failure can never
-  break the primary compile/run result — the existing output/error flow is
-  untouched.
-- `CompileResponse` gained `executionSteps` and `executionTraceTruncated`,
-  additively — the existing fields and their meaning are unchanged, so
-  nothing that depended on the old contract breaks.
-- `pom.xml` now passes `--add-modules jdk.jdi` at both compile and run
-  time (via `maven-compiler-plugin` and `spring-boot-maven-plugin`),
-  because the `jdk.jdi` module isn't resolved by default for classpath
-  ("unnamed module") apps. **If you ever run the packaged jar directly**
-  (`java -jar target/codevista-backend-*.jar`) instead of
-  `mvnw spring-boot:run`, add the same flag:
-  `java --add-modules jdk.jdi -jar target/codevista-backend-*.jar`.
+- `model/ExecutionStep.java` — new `typedArrays` (map of
+  `{ type, values: string[] }`) and `callDepth` fields; `Comparison` now
+  stores the actual `operator` (previously the frontend hard-coded `>`).
+- `execution/ExecutionTraceService.java`:
+  - **Typed arrays** — `double[]`/`float[]`/`long[]` captured as numeric
+    typed arrays (bar-rendered); `String[]`/`boolean[]`/`char[]`/`Object[]`
+    captured as typed arrays (chip-rendered); `int[]` keeps the original
+    bars + swap detection unchanged.
+  - **Scalar condition badges** — conditions like `if (a > b)` or
+    `while (n <= 1)` are now evaluated against live values and emitted with
+    `comparison { left, right, indices: [], result, operator }`, so every
+    condition shows a TRUE/FALSE badge, not only `arr[j] > arr[j+1]`.
+  - **Object field introspection** — user-defined objects (default package)
+    expose up to 8 visible fields as `obj.field` variable entries.
+  - **Recursion / call depth** — `callDepth` counts user-code frames, so
+    factorial/fibonacci show depth 2, 3, 4, … as they unfold.
+  - **Multi-class tracing** — steps into user helper classes (method bodies,
+    constructors) while still stepping over JDK internals; collapse phase
+    only folds non-mutating micro-steps into array-changing steps (fixed a
+    regression that swallowed declaration/mutation steps).
+- `components/Visualizer.tsx` — renders typed arrays (numeric bars or
+  string chips), a standalone condition-evaluation block (so scalar
+  comparisons show even in programs without arrays), a purple `Depth N`
+  chip for recursion, and operator-aware comparison text.
+- `lib/types.ts` — `typedArrays`, `callDepth`, `comparison.operator`.
 
-All of the above was written and verified end-to-end in a local JDK
-sandbox (compiled and run directly, and through `CompilerService`) against
-both the bundled bubble-sort example and an unrelated factorial/comparison
-program, before being wired into the Spring Boot service. The full
-compile-error path (`javac` failures) was also re-verified unchanged.
+### Error intelligence breadth
 
-## Frontend: use the real trace instead of demo data
+- `service/CompilerService.java` — `classifyError` grew from ~16 to ~40
+  categories, ordered most-specific-first (constructor rules checked before
+  the generic method-argument rule they contain). New categories include:
+  method argument/arity mismatch, no suitable method, constructor
+  mismatch/not-found, generic inference and type-argument issues,
+  not-a-functional-interface (lambdas), abstract-not-implemented,
+  cannot-override, static-context reference, unreachable statement,
+  duplicate class, public-class-filename mismatch, package-not-found,
+  unhandled checked exception, break/continue outside loop, bad operand
+  types, and more.
+- `controller/CompilerController.java` — every new category gets a
+  beginner-friendly `explanation` and actionable `suggestion`; runtime
+  exceptions expanded (ClassCastException, IllegalArgumentException,
+  NegativeArraySizeException, IllegalStateException, …) with the same
+  treatment.
 
-- `src/lib/types.ts` — `CompileResponse` gained the two new optional
-  fields above.
-- `src/app/workshop/page.tsx`:
-  - `Run Code` now stores `response.executionSteps` from the backend
-    instead of always loading `BUBBLE_SORT_STEPS`.
-  - Fixed a bug where the editor's "currently executing line" highlight
-    was frozen on the *first* step forever during visualization — it now
-    tracks whatever step is actually showing.
-  - Added the spec'd `Ctrl+Enter` / `Cmd+Enter` shortcut to run code from
-    anywhere in the workspace.
-  - Editing the code, or a code change, now clears any stale trace/error
-    state instead of leaving old highlights on screen.
-- `src/components/Visualizer.tsx` — now reports the active step back up
-  to the page via an `onStepChange` callback (used for the editor
-  highlight fix above).
-- `src/components/AnalysisPanel.tsx` — passes the callback through, and
-  shows a short status line after a successful run ("Captured N real
-  execution steps from this run…", or a note if the trace was truncated).
-- `src/data/demoExecution.ts` — kept, but re-labeled as reference/fixture
-  data only; it's no longer imported anywhere in the running app, per the
-  project rule that demo data must stay clearly separate from real
-  execution data.
+### Tests
 
-## Verified
+- New `VisualizationBreadthTest` (8 tests) — typed arrays, scalar
+  comparisons with operator, object fields, call depth, multi-class
+  stepping, mutation steps surviving collapse.
+- New `ErrorCategoryTest` (21 tests) — compiles deliberately broken
+  programs against real `javac` output and asserts the explanation /
+  suggestion for every new category, plus runtime-exception handling.
+- Backend suite: **54 tests, all passing** (`./mvnw test`).
 
-- All new/changed backend Java files were compiled and run standalone
-  (JDK 21, `--add-modules jdk.jdi`) against real `javac`/`java`
-  subprocesses — including the full `CompilerService.compileCode()` path
-  for both a successful run (34 real steps captured, correct swaps and
-  comparisons) and a compile error (unchanged error/line-number
-  behavior).
-- Changed frontend files pass `tsc --noEmit` and `eslint` with zero
-  errors. A full `next build` was attempted but fails in this sandbox
-  only because outbound access to `fonts.googleapis.com` (for the Geist
-  font) is blocked by the sandbox's network policy — unrelated to these
-  changes, and not an issue in a normal environment with internet access.
+### Docs
 
-## Not done in this pass (candidates for next time)
+- `README.md` — features table and tracing section updated for the new
+  capabilities; test count corrected to 54.
 
-- Monaco Editor swap-in (still a styled `<textarea>`-based editor).
-- `Ctrl+S` save-project shortcut (no project persistence exists yet —
-  Phase 11+ in the spec).
-- Splitting `ExecutionStep`'s two nested static classes
-  (`Comparison`/`Swap`) into their own files if you want one-class-per-file
-  strictly.
-- Tracking non-int arrays/collections (ArrayList, HashMap, etc. — Phase 9).
+---
+
+## Production hardening pass
+
+This pass fixed a critical execution hang, added real resource limits,
+exposed health/history APIs, added a history view, wired CI, and made the
+docs honest about the threat model.
+
+### Critical fix: runaway programs can no longer hang the server
+
+`CompilerService` previously read subprocess output to EOF *before* checking
+the timeout. A program like `while (true) {}` produced no output, so the
+read blocked forever and the 10-second kill was never reached — one user
+could pin a server thread indefinitely. Output is now drained concurrently
+on a daemon thread while `waitFor(timeout)` runs, so the timeout always
+fires and the process is forcibly destroyed.
+
+### Backend hardening
+
+- `service/CompilerService.java` — rewritten process handling:
+  - concurrent output reading + real timeout enforcement;
+  - stdout/stderr capped at `codevista.execution.max-output-length`
+    (default 128 KiB) with a `… [output truncated]` marker;
+  - source code capped at `codevista.execution.max-code-length`;
+  - user JVM heap bounded via `-Xmx` (also applied to `javac` via
+    `-J-Xmx` and to the JDI tracer's JVM);
+  - all limits configurable in `application.properties` / env vars.
+- `controller/CompilerController.java`:
+  - `GET /api/health` liveness probe;
+  - `GET /api/history` (most recent runs);
+  - request validation: language (default `java`, others rejected),
+    empty/whitespace code, oversized code;
+  - runtime errors now carry the failing source line (parsed from the
+    stack trace) so the editor highlights it;
+  - runtime-error responses surface captured (truncated) output;
+  - CORS origin list now configurable (`codevista.cors.allowed-origins`).
+- `service/HistoryService.java` + `model/HistoryEntry.java` — bounded
+  in-memory ring of compile/run attempts (no database).
+- `model/CompileRequest.java` — added `language` field.
+- `execution/ExecutionTraceService.java` — traced JVM gets `-Xmx256m`.
+- New test class `SecurityAndApiTest` (10 tests) covering infinite loops
+  (with and without output), output flooding, oversized source, unsupported
+  language, runtime error line extraction, health, and history.
+
+### Frontend
+
+- `lib/api.ts` — sends `language`; parses structured error bodies even on
+  non-200 responses; adds `getHistory()`.
+- `lib/types.ts` — added `HistoryEntry`.
+- `app/history/page.tsx` — new History view (loading / empty / error
+  states, per-run code + output + error details, refresh).
+- `components/WorkspaceHeader.tsx` — History link in the workspace header.
+- Removed dead files: `src/data/demoExecution.ts` (unused fixture data) and
+  `src/components/LiveDemo.tsx.bak`.
+
+### Config & CI
+
+- `next.config.ts` — backend proxy destination now reads
+  `CODEVISTA_API_URL` (default `http://localhost:8080`).
+- `.github/workflows/ci.yml` — CI runs install → lint → typecheck → build
+  (frontend) and compile → test (backend) on push/PR.
+
+### Docs
+
+- `README.md` — accurate security section (replaced the false claims that
+  user code has "no filesystem/network access": plain subprocess isolation
+  does not provide that), env-var reference, full API docs including
+  health/history, deployment notes (packaged jar needs
+  `--add-modules jdk.jdi`), project structure, CI.
+
+## Not done (deliberately)
+
+- Container/microVM sandboxing (Docker/gVisor/Firecracker) — documented as
+  a hard prerequisite for public deployment, not yet implemented.
+- LLM explanation layer — architecture seam exists; deterministic
+  explanations remain the source of truth.
+- User accounts / database — history is intentionally in-memory.
+- Structural rendering of collections (LinkedList/Stack/Queue/HashMap) —
+  they currently show as `toString()` text.

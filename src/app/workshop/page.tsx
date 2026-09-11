@@ -90,18 +90,15 @@ export default function WorkshopPage() {
     setActiveStepLine(step.lineNumber);
   }, []);
 
-  const handleLoadExample = useCallback(
-    (exampleCode: string, _exampleName: string) => {
-      setCode(exampleCode);
-      setResult(null);
-      setStatus("idle");
-      setIsVisualizing(false);
-      setExecutionSteps([]);
-      setActiveStepLine(null);
-      setFileName("Main.java");
-    },
-    []
-  );
+  const handleLoadExample = useCallback((exampleCode: string) => {
+    setCode(exampleCode);
+    setResult(null);
+    setStatus("idle");
+    setIsVisualizing(false);
+    setExecutionSteps([]);
+    setActiveStepLine(null);
+    setFileName("Main.java");
+  }, []);
 
   // Keyboard shortcuts
   useEffect(() => {

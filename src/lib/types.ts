@@ -25,18 +25,32 @@ export interface ExecutionStep {
   explanation: string;
   variables: Record<string, string>;
   arrays: Record<string, number[]>;
+  typedArrays?: Record<string, { type: string; values: string[] }>;
   highlights: number[];
   comparison?: {
     left: number;
     right: number;
-    indices: [number, number];
+    indices: number[];
     result: boolean;
+    operator?: string;
   };
   swap?: {
     indices: [number, number];
     before: number[];
     after: number[];
   };
+  callDepth?: number;
+}
+
+export interface HistoryEntry {
+  id: number;
+  timestamp: string;
+  language: string;
+  code: string;
+  success: boolean;
+  message: string;
+  output: string | null;
+  error: string | null;
 }
 
 export type CompilationStatus = "idle" | "compiling" | "success" | "error";
