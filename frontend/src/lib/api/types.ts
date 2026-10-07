@@ -193,13 +193,66 @@ export interface HeapObjectSnapshot {
 export interface TraceStep {
   stepIndex: number;
   line: number;
+  column?: number;
   eventType: TraceEventType;
   description: string;
+  scope?: string;
+  symbol?: string;
+  previousValue?: string;
+  currentValue?: string;
+  operation?: string;
+  relatedEvent?: string;
+  metadata?: Record<string, unknown>;
   variables: Record<string, VariableSnapshot>;
   callStack: StackFrameSnapshot[];
   heapObjects: Record<string, HeapObjectSnapshot>;
   output: string;
   threadName?: string;
+}
+
+export type NormalizedConceptType =
+  | "VARIABLE_DECLARATION"
+  | "VARIABLE_ASSIGNMENT"
+  | "VALUE_CHANGE"
+  | "EXPRESSION_EVALUATION"
+  | "CONDITION_CHECK"
+  | "BRANCH"
+  | "LOOP_START"
+  | "LOOP_ITERATION"
+  | "LOOP_END"
+  | "FUNCTION_CALL"
+  | "METHOD_CALL"
+  | "PARAMETER_BIND"
+  | "RETURN"
+  | "OBJECT_CREATE"
+  | "CONSTRUCTOR_CALL"
+  | "FIELD_UPDATE"
+  | "ARRAY_ACCESS"
+  | "ARRAY_MUTATION"
+  | "COLLECTION_OPERATION"
+  | "EXCEPTION"
+  | "OUTPUT"
+  | "LINE_EXECUTION"
+  | "GENERIC_STEP";
+
+export interface NormalizedExecutionEvent {
+  sequence: number;
+  eventType: TraceEventType;
+  conceptType: NormalizedConceptType;
+  sourceLine: number;
+  sourceColumn?: number;
+  scope: string;
+  symbol?: string;
+  previousValue?: string;
+  currentValue?: string;
+  operation?: string;
+  relatedEvent?: string;
+  metadata: Record<string, unknown>;
+  description: string;
+  output: string;
+  variables: Record<string, VariableSnapshot>;
+  callStack: StackFrameSnapshot[];
+  heapObjects: Record<string, HeapObjectSnapshot>;
 }
 
 export interface TraceRequestPayload {

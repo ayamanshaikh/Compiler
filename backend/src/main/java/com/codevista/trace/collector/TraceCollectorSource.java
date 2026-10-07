@@ -34,7 +34,9 @@ public class CodeVistaTraceCollector {
 
     public static synchronized void line(int line, String desc) {
         if (steps.size() >= MAX_STEPS) return;
-        addStep(line, "LINE", desc);
+        StepData s = createStep(line, "LINE", desc);
+        s.operation = "EXECUTE_LINE";
+        recordStep(s);
     }
 
     public static synchronized void var(String name, String type, String value, int line) {
@@ -46,41 +48,69 @@ public class CodeVistaTraceCollector {
         String desc = prev == null
                 ? "Declared variable '" + name + "' of type " + type + " = " + value
                 : "Updated variable '" + name + "' to " + value;
-        addStep(line, event, desc);
+        StepData s = createStep(line, event, desc);
+        s.symbol = name;
+        s.previousValue = prev;
+        s.currentValue = value;
+        s.operation = prev == null ? "DECLARE" : "ASSIGN";
+        s.metadata.put("type", type);
+        recordStep(s);
     }
 
     public static synchronized void arrayMutate(String arrayName, int index, String value, int line) {
         if (steps.size() >= MAX_STEPS) return;
+        String prev = currentHeap.get(arrayName + "[" + index + "]");
         currentHeap.put(arrayName + "[" + index + "]", value);
-        addStep(line, "ARRAY_MUTATION", "Updated element " + arrayName + "[" + index + "] = " + value);
+        StepData s = createStep(line, "ARRAY_MUTATION", "Updated element " + arrayName + "[" + index + "] = " + value);
+        s.symbol = arrayName;
+        s.previousValue = prev;
+        s.currentValue = value;
+        s.operation = "ARRAY_SET";
+        s.metadata.put("index", String.valueOf(index));
+        recordStep(s);
     }
 
     public static synchronized void branch(String condExpr, boolean taken, int line) {
         if (steps.size() >= MAX_STEPS) return;
         String desc = "Evaluated condition (" + condExpr + ") -> " + (taken ? "TRUE (branch taken)" : "FALSE");
-        addStep(line, "CONDITION_EVALUATION", desc);
+        StepData s = createStep(line, "CONDITION_EVALUATION", desc);
+        s.symbol = condExpr;
+        s.currentValue = String.valueOf(taken);
+        s.operation = "BRANCH";
+        s.metadata.put("condition", condExpr);
+        s.metadata.put("result", String.valueOf(taken));
+        recordStep(s);
     }
 
     public static synchronized void loopIter(int line, int iter) {
         if (steps.size() >= MAX_STEPS) return;
-        addStep(line, "LOOP_ITERATION", "Loop iteration " + iter);
+        StepData s = createStep(line, "LOOP_ITERATION", "Loop iteration " + iter);
+        s.operation = "LOOP_ITER";
+        s.metadata.put("iteration", String.valueOf(iter));
+        recordStep(s);
     }
 
     public static synchronized void print(String text, int line) {
         currentOutput.append(text);
         if (steps.size() < MAX_STEPS) {
-            addStep(line, "OUTPUT_PRINT", "Printed output: " + escapeSnippet(text));
+            StepData s = createStep(line, "OUTPUT_PRINT", "Printed output: " + escapeSnippet(text));
+            s.operation = "PRINT";
+            s.currentValue = text;
+            recordStep(s);
         }
     }
 
     public static synchronized void println(String text, int line) {
         currentOutput.append(text).append("\\n");
         if (steps.size() < MAX_STEPS) {
-            addStep(line, "OUTPUT_PRINT", "Printed line: " + escapeSnippet(text));
+            StepData s = createStep(line, "OUTPUT_PRINT", "Printed line: " + escapeSnippet(text));
+            s.operation = "PRINT";
+            s.currentValue = text;
+            recordStep(s);
         }
     }
 
-    private static void addStep(int line, String event, String desc) {
+    private static StepData createStep(int line, String event, String desc) {
         StepData s = new StepData();
         s.stepIndex = steps.size();
         s.line = line;
@@ -100,6 +130,10 @@ public class CodeVistaTraceCollector {
             s.callStack.add(st[i].getClassName() + "." + st[i].getMethodName() + "(line " + st[i].getLineNumber() + ")");
         }
 
+        return s;
+    }
+
+    private static void recordStep(StepData s) {
         steps.add(s);
     }
 
@@ -114,9 +148,32 @@ public class CodeVistaTraceCollector {
                 .append("\\"line\\":").append(s.line).append(",")
                 .append("\\"eventType\\":\\"").append(s.eventType).append("\\",")
                 .append("\\"description\\":\\"").append(escapeJson(s.description)).append("\\",")
-                .append("\\"output\\":\\"").append(escapeJson(s.output)).append("\\",")
-                .append("\\"variables\\":{");
+                .append("\\"scope\\":\\"").append(escapeJson(s.scope)).append("\\",")
+                .append("\\"output\\":\\"").append(escapeJson(s.output)).append("\\"");
 
+            if (s.symbol != null) {
+                json.append(",\\"symbol\\":\\"").append(escapeJson(s.symbol)).append("\\"");
+            }
+            if (s.previousValue != null) {
+                json.append(",\\"previousValue\\":\\"").append(escapeJson(s.previousValue)).append("\\"");
+            }
+            if (s.currentValue != null) {
+                json.append(",\\"currentValue\\":\\"").append(escapeJson(s.currentValue)).append("\\"");
+            }
+            if (s.operation != null) {
+                json.append(",\\"operation\\":\\"").append(escapeJson(s.operation)).append("\\"");
+            }
+            if (!s.metadata.isEmpty()) {
+                json.append(",\\"metadata\\":{");
+                int mi = 0;
+                for (Map.Entry<String, String> me : s.metadata.entrySet()) {
+                    if (mi++ > 0) json.append(",");
+                    json.append("\\"").append(escapeJson(me.getKey())).append("\\":\\"").append(escapeJson(me.getValue())).append("\\"");
+                }
+                json.append("}");
+            }
+
+            json.append(",\\"variables\\":{");
             int vi = 0;
             for (Map.Entry<String, VarData> ve : s.variables.entrySet()) {
                 if (vi++ > 0) json.append(",");
@@ -158,7 +215,7 @@ public class CodeVistaTraceCollector {
     private static String escapeJson(String s) {
         if (s == null) return "";
         return s.replace("\\\\", "\\\\\\\\")
-                .replace("\\"", "\\\\\\\"")
+                .replace("\\\"", "\\\\\\\"")
                 .replace("\\n", "\\\\n")
                 .replace("\\r", "\\\\r")
                 .replace("\\t", "\\\\t");
@@ -175,6 +232,12 @@ public class CodeVistaTraceCollector {
         int line;
         String eventType;
         String description;
+        String scope = "main";
+        String symbol;
+        String previousValue;
+        String currentValue;
+        String operation;
+        Map<String, String> metadata = new LinkedHashMap<>();
         String output;
         Map<String, VarData> variables = new LinkedHashMap<>();
         Map<String, String> heap = new LinkedHashMap<>();

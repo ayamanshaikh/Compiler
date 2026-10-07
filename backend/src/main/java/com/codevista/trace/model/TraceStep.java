@@ -12,8 +12,16 @@ public class TraceStep {
 
     private int stepIndex;
     private int line;
+    private Integer column;
     private TraceEventType eventType;
     private String description;
+    private String scope = "main";
+    private String symbol;
+    private String previousValue;
+    private String currentValue;
+    private String operation;
+    private String relatedEvent;
+    private Map<String, Object> metadata = new HashMap<>();
     private Map<String, VariableSnapshot> variables = new HashMap<>();
     private List<StackFrameSnapshot> callStack = new ArrayList<>();
     private Map<String, HeapObjectSnapshot> heapObjects = new HashMap<>();
@@ -115,5 +123,69 @@ public class TraceStep {
 
     public void setThreadName(String threadName) {
         this.threadName = threadName;
+    }
+
+    public Integer getColumn() {
+        return column;
+    }
+
+    public void setColumn(Integer column) {
+        this.column = column;
+    }
+
+    public String getScope() {
+        return scope;
+    }
+
+    public void setScope(String scope) {
+        this.scope = scope;
+    }
+
+    public String getSymbol() {
+        return symbol;
+    }
+
+    public void setSymbol(String symbol) {
+        this.symbol = symbol;
+    }
+
+    public String getPreviousValue() {
+        return previousValue;
+    }
+
+    public void setPreviousValue(String previousValue) {
+        this.previousValue = previousValue;
+    }
+
+    public String getCurrentValue() {
+        return currentValue;
+    }
+
+    public void setCurrentValue(String currentValue) {
+        this.currentValue = currentValue;
+    }
+
+    public String getOperation() {
+        return operation;
+    }
+
+    public void setOperation(String operation) {
+        this.operation = operation;
+    }
+
+    public String getRelatedEvent() {
+        return relatedEvent;
+    }
+
+    public void setRelatedEvent(String relatedEvent) {
+        this.relatedEvent = relatedEvent;
+    }
+
+    public Map<String, Object> getMetadata() {
+        return metadata;
+    }
+
+    public void setMetadata(Map<String, Object> metadata) {
+        this.metadata = metadata != null ? metadata : new HashMap<>();
     }
 }

@@ -139,6 +139,21 @@ public class JavaSourceInstrumenter {
                 continue;
             }
 
+            // Print statement: System.out.println(...) or System.out.print(...)
+            if (trimmed.startsWith("System.out.println(") && trimmed.endsWith(");")) {
+                outputLines.add(line);
+                String arg = trimmed.substring("System.out.println(".length(), trimmed.length() - 2).trim();
+                String valExpr = arg.isEmpty() ? "\"\"" : "String.valueOf(" + arg + ")";
+                outputLines.add("        CodeVistaTraceCollector.println(" + valExpr + ", " + originalLineNum + ");");
+                continue;
+            } else if (trimmed.startsWith("System.out.print(") && trimmed.endsWith(");")) {
+                outputLines.add(line);
+                String arg = trimmed.substring("System.out.print(".length(), trimmed.length() - 2).trim();
+                String valExpr = arg.isEmpty() ? "\"\"" : "String.valueOf(" + arg + ")";
+                outputLines.add("        CodeVistaTraceCollector.print(" + valExpr + ", " + originalLineNum + ");");
+                continue;
+            }
+
             // Regular statement: inject line marker if non-control line
             if (trimmed.endsWith(";") && !trimmed.startsWith("return") && !trimmed.startsWith("import") && !trimmed.startsWith("package")) {
                 outputLines.add("        CodeVistaTraceCollector.line(" + originalLineNum + ", \"Executed line " + originalLineNum + "\");");

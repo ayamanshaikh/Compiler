@@ -151,4 +151,48 @@ class JavaTraceExecutorTest {
         assertThat(trace.isSuccess()).isFalse();
         assertThat(trace.getStatus()).isEqualTo(ExecutionStatus.TIMEOUT);
     }
+
+    @Test
+    @DisplayName("6. Trace steps carry normalized contract fields (symbol, operation, currentValue, scope)")
+    void testNormalizedExecutionContractFields() {
+        String code = """
+                public class Main {
+                    public static void main(String[] args) {
+                        int x = 10;
+                        x = 20;
+                        System.out.println("x=" + x);
+                    }
+                }
+                """;
+
+        ExecutionTrace trace = executor.trace(new ExecutionRequest(Language.JAVA, code, ""));
+
+        assertThat(trace.isSuccess()).isTrue();
+        assertThat(trace.getSteps()).isNotEmpty();
+
+        boolean foundDeclaration = false;
+        boolean foundAssignment = false;
+        boolean foundPrint = false;
+
+        for (TraceStep step : trace.getSteps()) {
+            if ("x".equals(step.getSymbol()) && "DECLARE".equals(step.getOperation())) {
+                assertThat(step.getCurrentValue()).isEqualTo("10");
+                assertThat(step.getScope()).isEqualTo("main");
+                foundDeclaration = true;
+            }
+            if ("x".equals(step.getSymbol()) && "ASSIGN".equals(step.getOperation())) {
+                assertThat(step.getPreviousValue()).isEqualTo("10");
+                assertThat(step.getCurrentValue()).isEqualTo("20");
+                foundAssignment = true;
+            }
+            if ("PRINT".equals(step.getOperation())) {
+                assertThat(step.getCurrentValue()).contains("x=20");
+                foundPrint = true;
+            }
+        }
+
+        assertThat(foundDeclaration).isTrue();
+        assertThat(foundAssignment).isTrue();
+        assertThat(foundPrint).isTrue();
+    }
 }
