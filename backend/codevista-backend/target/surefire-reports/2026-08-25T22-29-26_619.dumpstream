@@ -1,5 +1,0 @@
-# Created at 2026-08-25T22:29:27.038
-Boot Manifest-JAR contains absolute paths in classpath 'D:\Compiler\backend\codevista-backend\target\test-classes'
-Hint: <argLine>-Djdk.net.URLClassPath.disableClassPathURLCheck=true</argLine>
-'other' has different root
-
