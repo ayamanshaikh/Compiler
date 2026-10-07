@@ -255,6 +255,36 @@ export interface NormalizedExecutionEvent {
   heapObjects: Record<string, HeapObjectSnapshot>;
 }
 
+export type VisualizationMode = "VISUAL_EXECUTION" | "EXPLANATION_FALLBACK";
+
+export type VisualRendererType =
+  | "VARIABLE"
+  | "EXPRESSION"
+  | "CONDITION"
+  | "LOOP"
+  | "ARRAY"
+  | "CALL_STACK"
+  | "OUTPUT"
+  | "GENERIC_VISUAL"
+  | "NONE";
+
+export interface VisualizationStrategyDecision {
+  mode: VisualizationMode;
+  rendererType: VisualRendererType;
+  confidence: "FULL" | "PARTIAL" | "FALLBACK";
+  reason: string;
+  suggestedDetailLevel: "beginner" | "detailed";
+  conceptType: NormalizedConceptType;
+}
+
+export interface ProgramStrategySummary {
+  totalEvents: number;
+  visualEventCount: number;
+  fallbackEventCount: number;
+  primaryMode: "VISUAL" | "MIXED" | "EXPLANATORY";
+  activeRenderers: VisualRendererType[];
+}
+
 export interface TraceRequestPayload {
   language: string;
   sourceCode: string;
