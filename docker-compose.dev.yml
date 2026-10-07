@@ -1,0 +1,34 @@
+# ==============================================================================
+# CodeVista AI - Local Development Docker Compose Override
+# Usage:
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml up
+# ==============================================================================
+
+services:
+  postgres:
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: codevista
+      POSTGRES_USER: codevista
+      POSTGRES_PASSWORD: codevista_secure_password
+
+  backend:
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_PROFILES_ACTIVE: dev
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/codevista
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: codevista
+      DB_USER: codevista
+      DB_PASSWORD: codevista_secure_password
+      CORS_ALLOWED_ORIGINS: http://localhost:3000,http://127.0.0.1:3000
+
+  frontend:
+    ports:
+      - "3000:3000"
+    environment:
+      NODE_ENV: development
+      NEXT_PUBLIC_API_URL: http://localhost:8080/api
