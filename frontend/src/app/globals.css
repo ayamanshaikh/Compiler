@@ -1,0 +1,161 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --background: 240 10% 99%;
+    --foreground: 222 47% 11%;
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+    --border: 214 32% 91%;
+    --muted: 210 40% 96%;
+    --muted-foreground: 215 16% 47%;
+    
+    /* Default Accent: Emerald */
+    --color-accent: #10b981;
+    --color-accent-rgb: 16, 185, 129;
+    --color-accent-hover: #059669;
+    --color-accent-subtle: rgba(16, 185, 129, 0.12);
+    --color-accent-border: rgba(16, 185, 129, 0.3);
+    --color-accent-text: #059669;
+  }
+
+  .dark {
+    --background: 224 71% 4%;
+    --foreground: 213 31% 91%;
+    --card: 222 47% 7%;
+    --card-foreground: 213 31% 91%;
+    --border: 217 33% 14%;
+    --muted: 217 33% 11%;
+    --muted-foreground: 215 20% 65%;
+
+    --color-accent-text: #34d399;
+  }
+
+  /* Accent Variations */
+  [data-accent="emerald"] {
+    --color-accent: #10b981;
+    --color-accent-rgb: 16, 185, 129;
+    --color-accent-hover: #059669;
+    --color-accent-subtle: rgba(16, 185, 129, 0.14);
+    --color-accent-border: rgba(16, 185, 129, 0.35);
+    --color-accent-text: #34d399;
+  }
+  :root:not(.dark) [data-accent="emerald"],
+  :root:not(.dark)[data-accent="emerald"] {
+    --color-accent-text: #059669;
+  }
+
+  [data-accent="indigo"] {
+    --color-accent: #6366f1;
+    --color-accent-rgb: 99, 102, 241;
+    --color-accent-hover: #4f46e5;
+    --color-accent-subtle: rgba(99, 102, 241, 0.14);
+    --color-accent-border: rgba(99, 102, 241, 0.35);
+    --color-accent-text: #818cf8;
+  }
+  :root:not(.dark) [data-accent="indigo"],
+  :root:not(.dark)[data-accent="indigo"] {
+    --color-accent-text: #4f46e5;
+  }
+
+  [data-accent="cyan"] {
+    --color-accent: #06b6d4;
+    --color-accent-rgb: 6, 182, 212;
+    --color-accent-hover: #0891b2;
+    --color-accent-subtle: rgba(6, 182, 212, 0.14);
+    --color-accent-border: rgba(6, 182, 212, 0.35);
+    --color-accent-text: #22d3ee;
+  }
+  :root:not(.dark) [data-accent="cyan"],
+  :root:not(.dark)[data-accent="cyan"] {
+    --color-accent-text: #0891b2;
+  }
+
+  [data-accent="amber"] {
+    --color-accent: #f59e0b;
+    --color-accent-rgb: 245, 158, 11;
+    --color-accent-hover: #d97706;
+    --color-accent-subtle: rgba(245, 158, 11, 0.14);
+    --color-accent-border: rgba(245, 158, 11, 0.35);
+    --color-accent-text: #fbbf24;
+  }
+  :root:not(.dark) [data-accent="amber"],
+  :root:not(.dark)[data-accent="amber"] {
+    --color-accent-text: #d97706;
+  }
+
+  [data-accent="rose"] {
+    --color-accent: #f43f5e;
+    --color-accent-rgb: 244, 63, 94;
+    --color-accent-hover: #e11d48;
+    --color-accent-subtle: rgba(244, 63, 94, 0.14);
+    --color-accent-border: rgba(244, 63, 94, 0.35);
+    --color-accent-text: #fb7185;
+  }
+  :root:not(.dark) [data-accent="rose"],
+  :root:not(.dark)[data-accent="rose"] {
+    --color-accent-text: #e11d48;
+  }
+
+  * {
+    border-color: hsl(var(--border));
+  }
+
+  body {
+    background-color: hsl(var(--background));
+    color: hsl(var(--foreground));
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+
+  /* Accessibility Focus Rings */
+  :focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+  }
+}
+
+@layer utilities {
+  .text-accent {
+    color: var(--color-accent-text, var(--color-accent));
+  }
+  .bg-accent {
+    background-color: var(--color-accent);
+  }
+  .border-accent {
+    border-color: var(--color-accent);
+  }
+  .ring-accent {
+    --tw-ring-color: var(--color-accent);
+    ring-color: var(--color-accent);
+  }
+}
+
+/* Animation Modes: Professional & Reduced Motion disable animations */
+[data-animation-mode="professional"] *,
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Custom scrollbars for technical/developer feel */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.2);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(148, 163, 184, 0.4);
+}
