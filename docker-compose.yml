@@ -1,0 +1,81 @@
+# ==============================================================================
+# CodeVista AI - Production Docker Compose Orchestration
+# Services:
+#   - postgres: PostgreSQL 16 Alpine Relational Database
+#   - backend: Spring Boot 4 Backend (JDK 25 runtime)
+#   - frontend: Next.js 16 Standalone Alpine Application
+# ==============================================================================
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: codevista-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_NAME:-codevista}
+      POSTGRES_USER: ${DB_USER:-codevista}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-codevista_secure_password}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-codevista} -d ${DB_NAME:-codevista}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - codevista-net
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: codevista-backend
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      PORT: 8080
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${DB_NAME:-codevista}
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: ${DB_NAME:-codevista}
+      DB_USER: ${DB_USER:-codevista}
+      DB_PASSWORD: ${DB_PASSWORD:-codevista_secure_password}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:3000,http://127.0.0.1:3000}
+    ports:
+      - "${BACKEND_PORT:-8080}:8080"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/api/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 25s
+    networks:
+      - codevista-net
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: codevista-frontend
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    environment:
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8080/api}
+      PORT: 3000
+    ports:
+      - "${FRONTEND_PORT:-3000}:3000"
+    networks:
+      - codevista-net
+
+networks:
+  codevista-net:
+    driver: bridge
+
+volumes:
+  postgres_data:
+    driver: local
