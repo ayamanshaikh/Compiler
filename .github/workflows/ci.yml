@@ -1,0 +1,71 @@
+name: CodeVista AI Continuous Integration
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend-test:
+    name: Backend Test Suite (JDK 25)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 25 (Eclipse Temurin)
+        uses: actions/setup-java@v4
+        with:
+          distribution: "temurin"
+          java-version: "25"
+          cache: "maven"
+
+      - name: Grant Execute Permissions for Maven Wrapper
+        run: chmod +x backend/mvnw
+
+      - name: Run Backend Tests
+        run: ./backend/mvnw clean test -f backend/pom.xml -B
+
+  frontend-check:
+    name: Frontend Lint & Turbopack Build (Node 22)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install Frontend Dependencies
+        run: npm --prefix frontend ci
+
+      - name: Run ESLint Verification
+        run: npm --prefix frontend run lint
+
+      - name: Build Next.js Production Bundle
+        run: npm --prefix frontend run build
+        env:
+          NEXT_TELEMETRY_DISABLED: 1
+          NODE_ENV: production
+
+  docker-validation:
+    name: Docker Configuration Validation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Validate Production Docker Compose Spec
+        run: docker compose config
+
+      - name: Validate Development Docker Compose Spec
+        run: docker compose -f docker-compose.yml -f docker-compose.dev.yml config
