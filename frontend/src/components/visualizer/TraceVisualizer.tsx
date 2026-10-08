@@ -11,6 +11,8 @@ import {
   Database,
   Layers,
   Code2,
+  BookOpen,
+  LayoutGrid,
 } from "lucide-react";
 import { TraceResponsePayload, TraceStep } from "@/lib/api/types";
 import { Button } from "@/components/ui/Button";
@@ -19,6 +21,7 @@ import { Card } from "@/components/ui/Card";
 import { useAuth } from "@/lib/context/AuthContext";
 import { normalizeTraceStep } from "@/lib/visualizer/traceNormalizer";
 import { AdaptiveConceptDispatcher } from "@/components/visualizer/concepts/AdaptiveConceptDispatcher";
+import { ExplanationTimeline } from "@/components/visualizer/explanation/ExplanationTimeline";
 
 interface TraceVisualizerProps {
   trace: TraceResponsePayload;
@@ -30,11 +33,17 @@ export function TraceVisualizer({ trace, sourceCode }: TraceVisualizerProps) {
   const [currentStepIndex, setCurrentStepIndex] = useState<number>(0);
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
   const [speedMultiplier, setSpeedMultiplier] = useState<number>(1); // 0.5x, 1x, 2x
+  const [viewMode, setViewMode] = useState<"visual" | "narrative">("visual");
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
-  const steps = trace.steps || [];
+  const steps = useMemo(() => trace.steps || [], [trace.steps]);
   const currentStep: TraceStep | undefined = steps[currentStepIndex];
   const sourceLines = sourceCode.split(/\r?\n/);
+
+  const normalizedEvents = useMemo(
+    () => steps.map((s) => normalizeTraceStep(s)),
+    [steps]
+  );
 
   const currentNormalizedEvent = useMemo(
     () => (currentStep ? normalizeTraceStep(currentStep) : null),
@@ -182,6 +191,36 @@ export function TraceVisualizer({ trace, sourceCode }: TraceVisualizerProps) {
             </button>
           ))}
         </div>
+
+        {/* View Mode Switcher */}
+        <div className="flex items-center gap-1 border-l border-zinc-800 pl-3">
+          <button
+            type="button"
+            onClick={() => setViewMode("visual")}
+            className={`px-2.5 py-1 text-xs rounded font-medium flex items-center gap-1.5 transition-colors cursor-pointer ${
+              viewMode === "visual"
+                ? "bg-accent/20 text-accent border border-accent/40 font-semibold"
+                : "text-zinc-400 hover:bg-zinc-800"
+            }`}
+            title="Visual Inspector View"
+          >
+            <LayoutGrid className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Visual Inspector</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setViewMode("narrative")}
+            className={`px-2.5 py-1 text-xs rounded font-medium flex items-center gap-1.5 transition-colors cursor-pointer ${
+              viewMode === "narrative"
+                ? "bg-accent/20 text-accent border border-accent/40 font-semibold"
+                : "text-zinc-400 hover:bg-zinc-800"
+            }`}
+            title="Step-by-Step Educational Narrative"
+          >
+            <BookOpen className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Narrative</span>
+          </button>
+        </div>
       </Card>
 
       {/* Step Event Indicator */}
@@ -197,139 +236,155 @@ export function TraceVisualizer({ trace, sourceCode }: TraceVisualizerProps) {
         </div>
       )}
 
-      {/* Main Grid: Code Editor View + Execution Inspector */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-        {/* Source Code Line View with Step Highlight */}
-        <div className={`lg:col-span-7 bg-zinc-950 border border-zinc-800 rounded-lg p-3 font-mono overflow-auto max-h-[460px] ${isCompact ? "text-[11px]" : "text-xs"}`}>
-          <div className="flex items-center gap-2 pb-2 mb-2 border-b border-zinc-800 text-zinc-400">
-            <Code2 className="w-3.5 h-3.5" />
-            <span className="font-semibold text-zinc-300">Program Execution Line Highlight</span>
-          </div>
-          {sourceLines.map((lineText, idx) => {
-            const lineNum = idx + 1;
-            const isCurrent = lineNum === activeLineNum;
-            return (
-              <div
-                key={idx}
-                className={`flex items-start rounded transition-colors ${
-                  isCompact ? "py-0 px-1" : "py-0.5 px-2"
-                } ${
-                  isCurrent
-                    ? "bg-accent/15 border-l-2 border-accent text-accent font-semibold"
-                    : "text-zinc-300 hover:bg-zinc-900/50"
-                }`}
-              >
-                <span className="w-8 text-right text-zinc-500 select-none mr-3 shrink-0">
-                  {lineNum}
-                </span>
-                <span className="whitespace-pre">{lineText || " "}</span>
-              </div>
-            );
-          })}
-        </div>
-
-        {/* Runtime State Inspector Panels */}
-        <div className="lg:col-span-5 flex flex-col gap-4 max-h-[460px] overflow-y-auto">
-          {/* Adaptive Concept Visualizer */}
-          {currentNormalizedEvent && (
-            <AdaptiveConceptDispatcher event={currentNormalizedEvent} />
-          )}
-
-          {/* Variables Table */}
-          <Card className={`bg-zinc-900 border-zinc-800 ${isCompact ? "p-2.5" : "p-3"}`}>
-            <div className="flex items-center gap-1.5 pb-2 mb-2 border-b border-zinc-800 text-xs text-zinc-300 font-semibold">
-              <Database className="w-3.5 h-3.5 text-accent" />
-              <span>Scope Variables</span>
-              {detailLevel === "compact" && (
-                <span className="text-[10px] text-zinc-500 ml-auto font-mono">Compact</span>
-              )}
+      {/* View Mode Content: Visual Inspector vs Step-by-Step Narrative */}
+      {viewMode === "visual" ? (
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+          {/* Source Code Line View with Step Highlight */}
+          <div className={`lg:col-span-7 bg-zinc-950 border border-zinc-800 rounded-lg p-3 font-mono overflow-auto max-h-[460px] ${isCompact ? "text-[11px]" : "text-xs"}`}>
+            <div className="flex items-center gap-2 pb-2 mb-2 border-b border-zinc-800 text-zinc-400">
+              <Code2 className="w-3.5 h-3.5" />
+              <span className="font-semibold text-zinc-300">Program Execution Line Highlight</span>
             </div>
-            {currentStep && Object.keys(currentStep.variables).length > 0 ? (
-              <div className={`flex flex-col ${isCompact ? "gap-1" : "gap-1.5"}`}>
-                {Object.entries(currentStep.variables).map(([key, v]) => (
-                  <div
-                    key={key}
-                    className={`flex items-center justify-between rounded bg-zinc-950 border border-zinc-800/80 font-mono ${isCompact ? "p-1.5 text-[11px]" : "p-2 text-xs"}`}
-                  >
-                    <div className="flex items-center gap-2">
-                      <span className="text-zinc-400">{v.type}</span>
-                      <span className="text-zinc-200 font-medium">{v.name}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {v.previousValue && (
-                        <span className="text-zinc-500 line-through text-[11px]">
-                          {v.previousValue}
+            {sourceLines.map((lineText, idx) => {
+              const lineNum = idx + 1;
+              const isCurrent = lineNum === activeLineNum;
+              return (
+                <div
+                  key={idx}
+                  className={`flex items-start rounded transition-colors ${
+                    isCompact ? "py-0 px-1" : "py-0.5 px-2"
+                  } ${
+                    isCurrent
+                      ? "bg-accent/15 border-l-2 border-accent text-accent font-semibold"
+                      : "text-zinc-300 hover:bg-zinc-900/50"
+                  }`}
+                >
+                  <span className="w-8 text-right text-zinc-500 select-none mr-3 shrink-0">
+                    {lineNum}
+                  </span>
+                  <span className="whitespace-pre">{lineText || " "}</span>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Runtime State Inspector Panels */}
+          <div className="lg:col-span-5 flex flex-col gap-4 max-h-[460px] overflow-y-auto">
+            {/* Adaptive Concept Visualizer */}
+            {currentNormalizedEvent && (
+              <AdaptiveConceptDispatcher
+                event={currentNormalizedEvent}
+                sourceLines={sourceLines}
+              />
+            )}
+
+            {/* Variables Table */}
+            <Card className={`bg-zinc-900 border-zinc-800 ${isCompact ? "p-2.5" : "p-3"}`}>
+              <div className="flex items-center gap-1.5 pb-2 mb-2 border-b border-zinc-800 text-xs text-zinc-300 font-semibold">
+                <Database className="w-3.5 h-3.5 text-accent" />
+                <span>Scope Variables</span>
+                {detailLevel === "compact" && (
+                  <span className="text-[10px] text-zinc-500 ml-auto font-mono">Compact</span>
+                )}
+              </div>
+              {currentStep && Object.keys(currentStep.variables).length > 0 ? (
+                <div className={`flex flex-col ${isCompact ? "gap-1" : "gap-1.5"}`}>
+                  {Object.entries(currentStep.variables).map(([key, v]) => (
+                    <div
+                      key={key}
+                      className={`flex items-center justify-between rounded bg-zinc-950 border border-zinc-800/80 font-mono ${isCompact ? "p-1.5 text-[11px]" : "p-2 text-xs"}`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className="text-zinc-400">{v.type}</span>
+                        <span className="text-zinc-200 font-medium">{v.name}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {v.previousValue && (
+                          <span className="text-zinc-500 line-through text-[11px]">
+                            {v.previousValue}
+                          </span>
+                        )}
+                        <span className="text-accent font-semibold">
+                          {v.value}
                         </span>
-                      )}
-                      <span className="text-accent font-semibold">
-                        {v.value}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-xs text-zinc-400 italic">No variables declared in current step.</p>
+              )}
+            </Card>
+
+            {/* Heap / Array Elements */}
+            {currentStep && Object.keys(currentStep.heapObjects).length > 0 && (
+              <Card className="p-3 bg-zinc-900 border-zinc-800">
+                <div className="flex items-center gap-1.5 pb-2 mb-2 border-b border-zinc-800 text-xs text-zinc-300 font-semibold">
+                  <Layers className="w-3.5 h-3.5 text-blue-400" />
+                  <span>Heap & Array Mutations</span>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  {Object.entries(currentStep.heapObjects).map(([id, heapObj]) => (
+                    <div
+                      key={id}
+                      className="p-1.5 rounded bg-zinc-950 border border-zinc-800 text-xs font-mono flex justify-between"
+                    >
+                      <span className="text-zinc-400">{id}:</span>
+                      <span className="text-blue-300 font-semibold">
+                        {String(heapObj.state?.value ?? "")}
                       </span>
                     </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-xs text-zinc-400 italic">No variables declared in current step.</p>
+                  ))}
+                </div>
+              </Card>
             )}
-          </Card>
 
-          {/* Heap / Array Elements */}
-          {currentStep && Object.keys(currentStep.heapObjects).length > 0 && (
+            {/* Call Stack */}
             <Card className="p-3 bg-zinc-900 border-zinc-800">
               <div className="flex items-center gap-1.5 pb-2 mb-2 border-b border-zinc-800 text-xs text-zinc-300 font-semibold">
-                <Layers className="w-3.5 h-3.5 text-blue-400" />
-                <span>Heap & Array Mutations</span>
+                <Layers className="w-3.5 h-3.5 text-purple-400" />
+                <span>Call Stack</span>
               </div>
-              <div className="grid grid-cols-2 gap-2">
-                {Object.entries(currentStep.heapObjects).map(([id, heapObj]) => (
-                  <div
-                    key={id}
-                    className="p-1.5 rounded bg-zinc-950 border border-zinc-800 text-xs font-mono flex justify-between"
-                  >
-                    <span className="text-zinc-400">{id}:</span>
-                    <span className="text-blue-300 font-semibold">
-                      {String(heapObj.state?.value ?? "")}
-                    </span>
-                  </div>
-                ))}
-              </div>
+              {currentStep && currentStep.callStack.length > 0 ? (
+                <div className="flex flex-col gap-1 text-xs font-mono text-zinc-300">
+                  {currentStep.callStack.map((frame, fIdx) => (
+                    <div
+                      key={fIdx}
+                      className="p-1.5 rounded bg-zinc-950 border border-zinc-800 text-[11px] text-zinc-300 truncate"
+                    >
+                      {frame.methodName}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-xs text-zinc-400 italic">Main execution frame</p>
+              )}
             </Card>
-          )}
 
-          {/* Call Stack */}
-          <Card className="p-3 bg-zinc-900 border-zinc-800">
-            <div className="flex items-center gap-1.5 pb-2 mb-2 border-b border-zinc-800 text-xs text-zinc-300 font-semibold">
-              <Layers className="w-3.5 h-3.5 text-purple-400" />
-              <span>Call Stack</span>
-            </div>
-            {currentStep && currentStep.callStack.length > 0 ? (
-              <div className="flex flex-col gap-1 text-xs font-mono text-zinc-300">
-                {currentStep.callStack.map((frame, fIdx) => (
-                  <div
-                    key={fIdx}
-                    className="p-1.5 rounded bg-zinc-950 border border-zinc-800 text-[11px] text-zinc-300 truncate"
-                  >
-                    {frame.methodName}
-                  </div>
-                ))}
+            {/* Cumulative Standard Output */}
+            <Card className="p-3 bg-zinc-900 border-zinc-800">
+              <div className="flex items-center gap-1.5 pb-2 mb-2 border-b border-zinc-800 text-xs text-zinc-300 font-semibold">
+                <Terminal className="w-3.5 h-3.5 text-amber-400" />
+                <span>Synchronized Output</span>
               </div>
-            ) : (
-              <p className="text-xs text-zinc-400 italic">Main execution frame</p>
-            )}
-          </Card>
-
-          {/* Cumulative Standard Output */}
-          <Card className="p-3 bg-zinc-900 border-zinc-800">
-            <div className="flex items-center gap-1.5 pb-2 mb-2 border-b border-zinc-800 text-xs text-zinc-300 font-semibold">
-              <Terminal className="w-3.5 h-3.5 text-amber-400" />
-              <span>Synchronized Output</span>
-            </div>
-            <pre className="p-2 rounded bg-black/70 border border-zinc-800 font-mono text-xs text-zinc-200 min-h-[48px] whitespace-pre-wrap">
-              {currentStep?.output || "(no output generated yet)"}
-            </pre>
-          </Card>
+              <pre className="p-2 rounded bg-black/70 border border-zinc-800 font-mono text-xs text-zinc-200 min-h-[48px] whitespace-pre-wrap">
+                {currentStep?.output || "(no output generated yet)"}
+              </pre>
+            </Card>
+          </div>
         </div>
-      </div>
+      ) : (
+        /* Step-by-Step Educational Narrative Mode */
+        <ExplanationTimeline
+          events={normalizedEvents}
+          sourceCode={sourceCode}
+          activeStepIndex={currentStepIndex}
+          onSelectStep={(idx) => {
+            setIsPlaying(false);
+            setCurrentStepIndex(idx);
+          }}
+        />
+      )}
     </div>
   );
 }

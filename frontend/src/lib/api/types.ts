@@ -285,6 +285,20 @@ export interface ProgramStrategySummary {
   activeRenderers: VisualRendererType[];
 }
 
+export interface StructuredStepExplanation {
+  stepNumber: number;
+  sourceLine: number;
+  lineContent?: string;
+  whatHappens: string;
+  currentValues: Record<string, string>;
+  whyItHappens: string;
+  result: string;
+  learnMore?: string;
+  controlFlowNote?: string;
+  category: string;
+  isVisualCapable: boolean;
+}
+
 export interface TraceRequestPayload {
   language: string;
   sourceCode: string;
