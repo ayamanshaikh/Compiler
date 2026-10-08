@@ -33,6 +33,20 @@ export function canVisualizeVariable(event: NormalizedExecutionEvent): boolean {
   return Boolean(event.symbol && event.currentValue !== undefined && event.currentValue !== null);
 }
 
+export function canVisualizeMatrix2D(event: NormalizedExecutionEvent): boolean {
+  if (event.conceptType === "MATRIX_2D") return true;
+  if (
+    event.metadata?.isMatrix === true ||
+    (typeof event.metadata?.rowIndex === "number" && typeof event.metadata?.colIndex === "number")
+  ) {
+    return true;
+  }
+  const has2DHeapKey = Object.keys(event.heapObjects || {}).some((k) =>
+    /\[\d+\]\[\d+\]/.test(k)
+  );
+  return has2DHeapKey;
+}
+
 export function canVisualizeArray(event: NormalizedExecutionEvent): boolean {
   if (event.conceptType === "ARRAY_MUTATION" || event.conceptType === "ARRAY_ACCESS") {
     return true;
@@ -189,6 +203,20 @@ export function canVisualizeString(event: NormalizedExecutionEvent): boolean {
 // ---------------------------------------------------------------------------
 
 const STRATEGY_HANDLERS: ConceptStrategyHandler[] = [
+  {
+    id: "matrix-2d-handler",
+    rendererType: "MATRIX_2D",
+    priority: 110,
+    match: canVisualizeMatrix2D,
+    evaluate: (event) => ({
+      mode: "VISUAL_EXECUTION",
+      rendererType: "MATRIX_2D",
+      confidence: "FULL",
+      reason: `Multi-dimensional matrix coordinate mutation detected on ${event.symbol || "matrix"}.`,
+      suggestedDetailLevel: "beginner",
+      conceptType: event.conceptType,
+    }),
+  },
   {
     id: "array-operation-handler",
     rendererType: "ARRAY_OPERATION",

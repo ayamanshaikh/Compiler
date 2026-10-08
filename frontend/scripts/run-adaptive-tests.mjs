@@ -486,3 +486,25 @@ test("Visual Density and High Contrast Display Verification", async (t) => {
   });
 });
 
+test("2D Matrix Grid Memory Concept Verification", async (t) => {
+  await t.test("Extracts multi-dimensional row and column indices", () => {
+    const heapKey = "grid[2][3]";
+    const match = heapKey.match(/\[(\d+)\]\[(\d+)\]/);
+    assert.ok(match);
+    assert.equal(parseInt(match[1], 10), 2);
+    assert.equal(parseInt(match[2], 10), 3);
+  });
+
+  await t.test("Identifies 2D matrix event via predicate", () => {
+    const isMatrix = (ev) =>
+      ev.conceptType === "MATRIX_2D" ||
+      ev.metadata?.isMatrix === true ||
+      Object.keys(ev.heapObjects || {}).some((k) => /\[\d+\]\[\d+\]/.test(k));
+
+    assert.equal(isMatrix({ conceptType: "MATRIX_2D" }), true);
+    assert.equal(isMatrix({ heapObjects: { "m[1][0]": {} } }), true);
+    assert.equal(isMatrix({ conceptType: "VARIABLE_ASSIGNMENT", heapObjects: {} }), false);
+  });
+});
+
+

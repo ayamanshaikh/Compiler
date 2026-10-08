@@ -7,6 +7,7 @@ import { buildStepExplanation } from "@/lib/visualizer/explanationBuilder";
 import { VariableConceptRenderer } from "./VariableConceptRenderer";
 import { ArrayConceptRenderer } from "./ArrayConceptRenderer";
 import { ArrayOperationRenderer } from "./ArrayOperationRenderer";
+import { Matrix2DConceptRenderer } from "./Matrix2DConceptRenderer";
 import { ConditionConceptRenderer } from "./ConditionConceptRenderer";
 import { LoopConceptRenderer } from "./LoopConceptRenderer";
 import { FunctionConceptRenderer } from "./FunctionConceptRenderer";
@@ -76,6 +77,9 @@ export function AdaptiveConceptDispatcher({ event, sourceLines }: AdaptiveConcep
             )}
             {decision.rendererType === "ARRAY_OPERATION" && (
               <ArrayOperationRenderer event={event} />
+            )}
+            {decision.rendererType === "MATRIX_2D" && (
+              <Matrix2DConceptRenderer event={event} />
             )}
             {decision.rendererType === "STRING_OPERATION" && (
               <StringConceptRenderer event={event} />
