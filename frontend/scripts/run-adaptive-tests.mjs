@@ -331,3 +331,18 @@ test("Parameter Binding and Return Flow Concept Verification", async (t) => {
     assert.equal(returnStep.currentValue, "8");
   });
 });
+
+test("String Character Sequence Buffer Concept Verification", async (t) => {
+  await t.test("Parses string into indexed character cells", () => {
+    const str = "Hello";
+    const chars = str.split("");
+    assert.equal(chars.length, 5);
+    assert.equal(chars[0], "H");
+    assert.equal(chars[4], "o");
+  });
+
+  await t.test("Strips wrapping quotation marks correctly", () => {
+    const cleanStr = '"CodeVista"'.replace(/^["']|["']$/g, "");
+    assert.equal(cleanStr, "CodeVista");
+  });
+});

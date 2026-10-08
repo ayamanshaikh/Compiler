@@ -172,6 +172,18 @@ export function canVisualizeParameterBinding(event: NormalizedExecutionEvent): b
   return false;
 }
 
+export function canVisualizeString(event: NormalizedExecutionEvent): boolean {
+  if (event.conceptType === "STRING_OPERATION") return true;
+  if (
+    event.metadata?.type === "String" &&
+    event.currentValue !== undefined &&
+    typeof event.currentValue === "string"
+  ) {
+    return true;
+  }
+  return false;
+}
+
 // ---------------------------------------------------------------------------
 // Extensible Strategy Handlers Registry
 // ---------------------------------------------------------------------------
@@ -257,6 +269,20 @@ const STRATEGY_HANDLERS: ConceptStrategyHandler[] = [
       rendererType: "LOOP",
       confidence: "FULL",
       reason: `Loop iteration progression with active cycle metrics.`,
+      suggestedDetailLevel: "beginner",
+      conceptType: event.conceptType,
+    }),
+  },
+  {
+    id: "string-handler",
+    rendererType: "STRING_OPERATION",
+    priority: 78,
+    match: canVisualizeString,
+    evaluate: (event) => ({
+      mode: "VISUAL_EXECUTION",
+      rendererType: "STRING_OPERATION",
+      confidence: "FULL",
+      reason: `String character sequence operation on '${event.symbol || "string"}' with immutability model.`,
       suggestedDetailLevel: "beginner",
       conceptType: event.conceptType,
     }),
