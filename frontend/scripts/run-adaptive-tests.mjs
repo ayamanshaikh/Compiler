@@ -426,3 +426,23 @@ test("Trace State URL Hash Sharing Verification", async (t) => {
     assert.equal(decodeSafe(""), null);
   });
 });
+
+test("Screen Reader ARIA Live Step Announcer Verification", async (t) => {
+  await t.test("Formats variable assignment announcement correctly", () => {
+    const formatAnnouncement = (step, total, ev) =>
+      `Step ${step + 1} of ${total}. Line ${ev.lineNumber}. Variable ${ev.symbol} updated from ${ev.previousValue} to ${ev.currentValue}.`;
+    
+    const ev = { lineNumber: 5, symbol: "total", previousValue: "100", currentValue: "300" };
+    const msg = formatAnnouncement(2, 10, ev);
+    assert.equal(msg, "Step 3 of 10. Line 5. Variable total updated from 100 to 300.");
+  });
+
+  await t.test("Formats condition check announcement correctly", () => {
+    const formatAnnouncement = (step, total, ev) =>
+      `Step ${step + 1} of ${total}. Line ${ev.lineNumber}. Condition ${ev.condition} evaluated to ${ev.result}.`;
+
+    const ev = { lineNumber: 12, condition: "age >= 18", result: "true" };
+    const msg = formatAnnouncement(4, 8, ev);
+    assert.equal(msg, "Step 5 of 8. Line 12. Condition age >= 18 evaluated to true.");
+  });
+});

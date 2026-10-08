@@ -35,6 +35,7 @@ import { useTraceKeyboardShortcuts } from "@/lib/visualizer/useTraceKeyboardShor
 import { downloadTraceFile } from "@/lib/visualizer/traceExport";
 import { encodeSharedTrace } from "@/lib/visualizer/traceUrlSharing";
 import { TraceShortcutsModal } from "./TraceShortcutsModal";
+import { TraceAriaLiveAnnouncer } from "./TraceAriaLiveAnnouncer";
 import { AdaptiveConceptDispatcher } from "@/components/visualizer/concepts/AdaptiveConceptDispatcher";
 import { ExplanationTimeline } from "@/components/visualizer/explanation/ExplanationTimeline";
 
@@ -198,6 +199,13 @@ export function TraceVisualizer({ trace, sourceCode }: TraceVisualizerProps) {
 
   return (
     <div className="flex flex-col gap-4 w-full">
+      {/* Accessible screen reader live step announcer */}
+      <TraceAriaLiveAnnouncer
+        currentStepIndex={currentStepIndex}
+        totalSteps={steps.length}
+        event={currentNormalizedEvent}
+      />
+
       {/* Control Bar */}
       <Card className="p-3 bg-zinc-900 border-zinc-800 flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-1.5">
