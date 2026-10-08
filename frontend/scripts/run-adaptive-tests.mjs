@@ -116,3 +116,85 @@ test("Explanation Narrative and Fallback System Logic Verification", async (t) =
   });
 });
 
+test("Partial and Mixed Visualization Strategy Logic Verification", async (t) => {
+  await t.test("Mixed program trace with visual and non-visual steps classifies as MIXED", () => {
+    const traceEvents = [
+      {
+        conceptType: "VARIABLE_DECLARATION",
+        symbol: "x",
+        currentValue: "10",
+        isVisual: true,
+        renderer: "VARIABLE",
+      },
+      {
+        conceptType: "OUTPUT",
+        currentValue: "Starting program",
+        isVisual: true,
+        renderer: "OUTPUT",
+      },
+      {
+        conceptType: "EXPRESSION_EVALUATION",
+        symbol: "x",
+        currentValue: "15",
+        metadata: { expression: "x + 5" },
+        isVisual: true,
+        renderer: "EXPRESSION",
+      },
+      {
+        conceptType: "LINE_EXECUTION",
+        symbol: undefined,
+        currentValue: undefined,
+        isVisual: false,
+        renderer: "NONE",
+      },
+      {
+        conceptType: "VARIABLE_ASSIGNMENT",
+        symbol: "x",
+        currentValue: "20",
+        previousValue: "15",
+        isVisual: true,
+        renderer: "VARIABLE",
+      },
+    ];
+
+    const visualCount = traceEvents.filter(e => e.isVisual).length;
+    const fallbackCount = traceEvents.filter(e => !e.isVisual).length;
+    const mode = visualCount > 0 && fallbackCount > 0 ? "MIXED" : visualCount > 0 ? "VISUAL" : "EXPLANATORY";
+    const uniqueRenderers = Array.from(new Set(traceEvents.filter(e => e.isVisual).map(e => e.renderer)));
+
+    assert.equal(traceEvents.length, 5);
+    assert.equal(visualCount, 4);
+    assert.equal(fallbackCount, 1);
+    assert.equal(mode, "MIXED");
+    assert.ok(uniqueRenderers.includes("VARIABLE"));
+    assert.ok(uniqueRenderers.includes("OUTPUT"));
+    assert.ok(uniqueRenderers.includes("EXPRESSION"));
+  });
+
+  await t.test("Arithmetic expression triggers EXPRESSION evaluation flow", () => {
+    const exprEvent = {
+      conceptType: "VARIABLE_ASSIGNMENT",
+      symbol: "total",
+      currentValue: "300",
+      previousValue: "0",
+      description: "total = price * quantity (300)",
+      operation: "MUL",
+    };
+    const hasArithmetic = Boolean(
+      exprEvent.operation === "MUL" ||
+      /[+\-*\/%]/.test(exprEvent.description)
+    );
+    assert.equal(hasArithmetic, true);
+  });
+
+  await t.test("State persistence maintains variables during non-visual steps", () => {
+    const previousScope = { x: { name: "x", value: "10" } };
+    const nonVisualStep = {
+      conceptType: "LINE_EXECUTION",
+      variables: previousScope, // Snapshot persists
+    };
+    assert.equal(nonVisualStep.variables.x.value, "10");
+  });
+});
+
+

@@ -13,6 +13,8 @@ import {
   Code2,
   BookOpen,
   LayoutGrid,
+  FastForward,
+  Rewind,
 } from "lucide-react";
 import { TraceResponsePayload, TraceStep } from "@/lib/api/types";
 import { Button } from "@/components/ui/Button";
@@ -20,6 +22,10 @@ import { Badge } from "@/components/ui/Badge";
 import { Card } from "@/components/ui/Card";
 import { useAuth } from "@/lib/context/AuthContext";
 import { normalizeTraceStep } from "@/lib/visualizer/traceNormalizer";
+import {
+  analyzeProgramTraceStrategies,
+  resolveVisualizationStrategy,
+} from "@/lib/visualizer/adaptiveStrategy";
 import { AdaptiveConceptDispatcher } from "@/components/visualizer/concepts/AdaptiveConceptDispatcher";
 import { ExplanationTimeline } from "@/components/visualizer/explanation/ExplanationTimeline";
 
@@ -48,6 +54,11 @@ export function TraceVisualizer({ trace, sourceCode }: TraceVisualizerProps) {
   const currentNormalizedEvent = useMemo(
     () => (currentStep ? normalizeTraceStep(currentStep) : null),
     [currentStep]
+  );
+
+  const programSummary = useMemo(
+    () => analyzeProgramTraceStrategies(normalizedEvents),
+    [normalizedEvents]
   );
 
   const baseSpeed = preferences?.visualizerSpeed || 600;
@@ -92,6 +103,36 @@ export function TraceVisualizer({ trace, sourceCode }: TraceVisualizerProps) {
     }
   };
 
+  const handleNextKeyframe = () => {
+    setIsPlaying(false);
+    for (let i = currentStepIndex + 1; i < normalizedEvents.length; i++) {
+      const ev = normalizedEvents[i];
+      const dec = resolveVisualizationStrategy(ev);
+      if (dec.mode === "VISUAL_EXECUTION" || ev.conceptType !== "LINE_EXECUTION") {
+        setCurrentStepIndex(i);
+        return;
+      }
+    }
+    if (currentStepIndex < steps.length - 1) {
+      setCurrentStepIndex(steps.length - 1);
+    }
+  };
+
+  const handlePrevKeyframe = () => {
+    setIsPlaying(false);
+    for (let i = currentStepIndex - 1; i >= 0; i--) {
+      const ev = normalizedEvents[i];
+      const dec = resolveVisualizationStrategy(ev);
+      if (dec.mode === "VISUAL_EXECUTION" || ev.conceptType !== "LINE_EXECUTION") {
+        setCurrentStepIndex(i);
+        return;
+      }
+    }
+    if (currentStepIndex > 0) {
+      setCurrentStepIndex(0);
+    }
+  };
+
   const handleRestart = () => {
     setIsPlaying(false);
     setCurrentStepIndex(0);
@@ -111,7 +152,7 @@ export function TraceVisualizer({ trace, sourceCode }: TraceVisualizerProps) {
     <div className="flex flex-col gap-4 w-full">
       {/* Control Bar */}
       <Card className="p-3 bg-zinc-900 border-zinc-800 flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5">
           <Button
             variant="ghost"
             size="sm"
@@ -120,6 +161,15 @@ export function TraceVisualizer({ trace, sourceCode }: TraceVisualizerProps) {
           >
             <RotateCcw className="w-4 h-4 mr-1" />
             Restart
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handlePrevKeyframe}
+            disabled={currentStepIndex === 0}
+            title="Previous Keyframe / State Change"
+          >
+            <Rewind className="w-3.5 h-3.5" />
           </Button>
           <Button
             variant="ghost"
@@ -154,6 +204,15 @@ export function TraceVisualizer({ trace, sourceCode }: TraceVisualizerProps) {
             title="Step Forward"
           >
             <ChevronRight className="w-4 h-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleNextKeyframe}
+            disabled={currentStepIndex >= steps.length - 1}
+            title="Next Keyframe / State Change"
+          >
+            <FastForward className="w-3.5 h-3.5" />
           </Button>
         </div>
 
@@ -225,9 +284,32 @@ export function TraceVisualizer({ trace, sourceCode }: TraceVisualizerProps) {
 
       {/* Step Event Indicator */}
       {currentStep && (
-        <div className="flex items-center gap-3 px-4 py-2.5 bg-zinc-900/80 border border-zinc-800/80 rounded-lg">
+        <div className="flex flex-wrap items-center gap-2.5 px-4 py-2.5 bg-zinc-900/80 border border-zinc-800/80 rounded-lg">
           <Badge variant="default">{currentStep.eventType}</Badge>
-          <span className="text-sm text-zinc-200 font-medium">
+
+          {/* Adaptive Strategy Mode Indicator */}
+          <Badge
+            variant={
+              programSummary.primaryMode === "MIXED"
+                ? "neutral"
+                : programSummary.primaryMode === "VISUAL"
+                ? "success"
+                : "default"
+            }
+            size="sm"
+            dot
+            title={`${programSummary.visualEventCount} of ${programSummary.totalEvents} events rendered visually`}
+          >
+            {programSummary.primaryMode === "MIXED"
+              ? `Mixed (${Math.round(
+                  (programSummary.visualEventCount / (programSummary.totalEvents || 1)) * 100
+                )}% Visual)`
+              : programSummary.primaryMode === "VISUAL"
+              ? "100% Visual Mode"
+              : "Step Narrative Mode"}
+          </Badge>
+
+          <span className="text-sm text-zinc-200 font-medium truncate max-w-md">
             {currentStep.description}
           </span>
           <span className="text-xs text-accent ml-auto font-mono">

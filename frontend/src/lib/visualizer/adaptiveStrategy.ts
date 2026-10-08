@@ -79,10 +79,31 @@ export function canVisualizeOutput(event: NormalizedExecutionEvent): boolean {
 }
 
 export function canVisualizeExpression(event: NormalizedExecutionEvent): boolean {
-  if (event.conceptType !== "EXPRESSION_EVALUATION") {
-    return false;
+  if (event.conceptType === "EXPRESSION_EVALUATION") {
+    return true;
   }
-  return Boolean(event.metadata?.operands || event.metadata?.operation);
+  if (
+    event.operation &&
+    /^[+\-*\/%]$|ASSIGN_OP|ADD|SUB|MUL|DIV|MOD/.test(event.operation)
+  ) {
+    return Boolean(event.currentValue !== undefined);
+  }
+  if (
+    event.metadata?.operation ||
+    event.metadata?.operands ||
+    event.metadata?.expression
+  ) {
+    return true;
+  }
+  if (
+    event.conceptType === "VARIABLE_ASSIGNMENT" &&
+    event.description &&
+    /[+\-*\/%]/.test(event.description) &&
+    event.previousValue !== undefined
+  ) {
+    return Boolean(event.symbol && event.currentValue !== undefined);
+  }
+  return false;
 }
 
 // ---------------------------------------------------------------------------

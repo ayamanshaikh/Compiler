@@ -10,6 +10,7 @@ import { ConditionConceptRenderer } from "./ConditionConceptRenderer";
 import { LoopConceptRenderer } from "./LoopConceptRenderer";
 import { FunctionConceptRenderer } from "./FunctionConceptRenderer";
 import { OutputConceptRenderer } from "./OutputConceptRenderer";
+import { ExpressionConceptRenderer } from "./ExpressionConceptRenderer";
 import { StepExplanationCard } from "../explanation/StepExplanationCard";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
@@ -75,6 +76,9 @@ export function AdaptiveConceptDispatcher({ event, sourceLines }: AdaptiveConcep
             )}
             {decision.rendererType === "CALL_STACK" && (
               <FunctionConceptRenderer event={event} />
+            )}
+            {decision.rendererType === "EXPRESSION" && (
+              <ExpressionConceptRenderer event={event} />
             )}
             {decision.rendererType === "OUTPUT" && (
               <OutputConceptRenderer event={event} />
