@@ -21,6 +21,7 @@ import {
 } from "@/lib/api/algorithm";
 import { FALLBACK_ALGORITHMS } from "@/lib/data/algorithmData";
 import { parseImportedTrace } from "@/lib/visualizer/traceExport";
+import { decodeSharedTrace } from "@/lib/visualizer/traceUrlSharing";
 import {
   Play,
   Sparkles,
@@ -182,7 +183,12 @@ const DEFAULT_JAVA_CODE = TRACE_PRESETS[0].sourceCode;
 function VisualizeContent() {
   const searchParams = useSearchParams();
   const initialAlgoSlug = searchParams.get("algorithm") || "bubble-sort";
-  const initialMode = searchParams.get("mode") === "trace" ? "trace" : "algorithm";
+  const initialMode =
+    typeof window !== "undefined" && window.location.hash.includes("share=")
+      ? "trace"
+      : searchParams.get("mode") === "trace"
+      ? "trace"
+      : "algorithm";
 
   // Visualizer Mode
   const [activeMode, setActiveMode] = useState<"algorithm" | "trace">(initialMode);
@@ -203,6 +209,13 @@ function VisualizeContent() {
   const [sourceCode, setSourceCode] = useState<string>(() => {
     if (typeof window !== "undefined") {
       try {
+        const hash = window.location.hash;
+        if (hash && hash.includes("share=")) {
+          const shared = decodeSharedTrace(hash);
+          if (shared && shared.code) {
+            return shared.code;
+          }
+        }
         const cached = sessionStorage.getItem("codevista_trace_source");
         if (cached && cached.trim()) {
           sessionStorage.removeItem("codevista_trace_source");
@@ -218,6 +231,10 @@ function VisualizeContent() {
   const [selectedPresetId, setSelectedPresetId] = useState<string>(() => {
     if (typeof window !== "undefined") {
       try {
+        const hash = window.location.hash;
+        if (hash && hash.includes("share=")) {
+          return "";
+        }
         const cached = sessionStorage.getItem("codevista_trace_source");
         if (cached && cached.trim()) {
           return "";
@@ -232,6 +249,23 @@ function VisualizeContent() {
   const [isJvmLoading, setIsJvmLoading] = useState<boolean>(false);
   const [jvmTrace, setJvmTrace] = useState<TraceResponsePayload | null>(null);
   const [jvmError, setJvmError] = useState<string | null>(null);
+
+  // Listen to hashchange events for dynamic URL updates
+  useEffect(() => {
+    const handleHashChange = () => {
+      const hash = window.location.hash;
+      if (hash && hash.includes("share=")) {
+        const shared = decodeSharedTrace(hash);
+        if (shared && shared.code) {
+          setSourceCode(shared.code);
+          setSelectedPresetId("");
+          setActiveMode("trace");
+        }
+      }
+    };
+    window.addEventListener("hashchange", handleHashChange);
+    return () => window.removeEventListener("hashchange", handleHashChange);
+  }, []);
 
   // Load algorithm catalogue
   useEffect(() => {

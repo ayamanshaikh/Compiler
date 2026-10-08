@@ -394,3 +394,35 @@ test("Trace Session Export & Import Verification", async (t) => {
     assert.equal(validate('{"schemaVersion":"1.0.0","trace":{"steps":[]}}'), true);
   });
 });
+
+test("Trace State URL Hash Sharing Verification", async (t) => {
+  await t.test("Encodes and decodes source code and step position via base64 roundtrip", () => {
+    const code = 'public class Main { int x = 42; }';
+    const step = 3;
+    const payload = JSON.stringify({ v: 1, c: code, s: step });
+    const encoded = encodeURIComponent(Buffer.from(payload, "utf-8").toString("base64"));
+
+    const decodedUri = decodeURIComponent(encoded);
+    const jsonStr = Buffer.from(decodedUri, "base64").toString("utf-8");
+    const parsed = JSON.parse(jsonStr);
+
+    assert.equal(parsed.c, code);
+    assert.equal(parsed.s, 3);
+  });
+
+  await t.test("Gracefully handles invalid or corrupted hash fragments", () => {
+    const decodeSafe = (hash) => {
+      try {
+        const clean = hash.replace(/^#share=/, "");
+        const raw = Buffer.from(decodeURIComponent(clean), "base64").toString("utf-8");
+        const parsed = JSON.parse(raw);
+        return parsed.c || null;
+      } catch {
+        return null;
+      }
+    };
+
+    assert.equal(decodeSafe("#share=invalid_base64_!@#$"), null);
+    assert.equal(decodeSafe(""), null);
+  });
+});

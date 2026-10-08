@@ -17,6 +17,8 @@ import {
   Rewind,
   Keyboard,
   Download,
+  Share2,
+  Check,
 } from "lucide-react";
 import { TraceResponsePayload, TraceStep } from "@/lib/api/types";
 import { Button } from "@/components/ui/Button";
@@ -31,6 +33,7 @@ import {
 import { detectCodeConcepts } from "@/lib/visualizer/codeConceptDetector";
 import { useTraceKeyboardShortcuts } from "@/lib/visualizer/useTraceKeyboardShortcuts";
 import { downloadTraceFile } from "@/lib/visualizer/traceExport";
+import { encodeSharedTrace } from "@/lib/visualizer/traceUrlSharing";
 import { TraceShortcutsModal } from "./TraceShortcutsModal";
 import { AdaptiveConceptDispatcher } from "@/components/visualizer/concepts/AdaptiveConceptDispatcher";
 import { ExplanationTimeline } from "@/components/visualizer/explanation/ExplanationTimeline";
@@ -150,6 +153,22 @@ export function TraceVisualizer({ trace, sourceCode }: TraceVisualizerProps) {
   };
 
   const [isShortcutsOpen, setIsShortcutsOpen] = useState<boolean>(false);
+  const [isCopied, setIsCopied] = useState<boolean>(false);
+
+  const handleShareTrace = () => {
+    if (typeof window === "undefined") return;
+    const hash = encodeSharedTrace(sourceCode, currentStepIndex);
+    const url = `${window.location.origin}${window.location.pathname}#share=${hash}`;
+    navigator.clipboard
+      .writeText(url)
+      .then(() => {
+        setIsCopied(true);
+        setTimeout(() => setIsCopied(false), 2000);
+      })
+      .catch(() => {
+        // Fallback for restricted clipboard contexts
+      });
+  };
 
   useTraceKeyboardShortcuts({
     onTogglePlay: () => setIsPlaying((p) => !p),
@@ -323,6 +342,22 @@ export function TraceVisualizer({ trace, sourceCode }: TraceVisualizerProps) {
             title="Export Trace Session (.json)"
           >
             <Download className="w-3.5 h-3.5" />
+          </button>
+          <button
+            type="button"
+            onClick={handleShareTrace}
+            className={`p-1.5 rounded transition-colors cursor-pointer ${
+              isCopied
+                ? "text-emerald-400 bg-emerald-500/10 border border-emerald-500/30"
+                : "text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800"
+            }`}
+            title={isCopied ? "Share link copied!" : "Copy Shareable Link"}
+          >
+            {isCopied ? (
+              <Check className="w-3.5 h-3.5" />
+            ) : (
+              <Share2 className="w-3.5 h-3.5" />
+            )}
           </button>
         </div>
       </Card>
