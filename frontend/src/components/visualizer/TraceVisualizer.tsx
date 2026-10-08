@@ -15,6 +15,7 @@ import {
   LayoutGrid,
   FastForward,
   Rewind,
+  Keyboard,
 } from "lucide-react";
 import { TraceResponsePayload, TraceStep } from "@/lib/api/types";
 import { Button } from "@/components/ui/Button";
@@ -27,6 +28,8 @@ import {
   resolveVisualizationStrategy,
 } from "@/lib/visualizer/adaptiveStrategy";
 import { detectCodeConcepts } from "@/lib/visualizer/codeConceptDetector";
+import { useTraceKeyboardShortcuts } from "@/lib/visualizer/useTraceKeyboardShortcuts";
+import { TraceShortcutsModal } from "./TraceShortcutsModal";
 import { AdaptiveConceptDispatcher } from "@/components/visualizer/concepts/AdaptiveConceptDispatcher";
 import { ExplanationTimeline } from "@/components/visualizer/explanation/ExplanationTimeline";
 
@@ -143,6 +146,24 @@ export function TraceVisualizer({ trace, sourceCode }: TraceVisualizerProps) {
     setIsPlaying(false);
     setCurrentStepIndex(0);
   };
+
+  const [isShortcutsOpen, setIsShortcutsOpen] = useState<boolean>(false);
+
+  useTraceKeyboardShortcuts({
+    onTogglePlay: () => setIsPlaying((p) => !p),
+    onStepForward: handleStepForward,
+    onStepBackward: handleStepBackward,
+    onFirstStep: handleRestart,
+    onLastStep: () => {
+      setIsPlaying(false);
+      setCurrentStepIndex(steps.length - 1);
+    },
+    onNextKeyframe: handleNextKeyframe,
+    onPrevKeyframe: handlePrevKeyframe,
+    onToggleViewMode: () =>
+      setViewMode((v) => (v === "visual" ? "narrative" : "visual")),
+    onToggleHelp: () => setIsShortcutsOpen((o) => !o),
+  });
 
   if (steps.length === 0) {
     return (
@@ -284,6 +305,14 @@ export function TraceVisualizer({ trace, sourceCode }: TraceVisualizerProps) {
           >
             <BookOpen className="w-3.5 h-3.5" />
             <span className="hidden sm:inline">Narrative</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setIsShortcutsOpen(true)}
+            className="p-1.5 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800 rounded transition-colors cursor-pointer"
+            title="Keyboard Shortcuts Guide (?)"
+          >
+            <Keyboard className="w-3.5 h-3.5" />
           </button>
         </div>
       </Card>
@@ -492,6 +521,12 @@ export function TraceVisualizer({ trace, sourceCode }: TraceVisualizerProps) {
           }}
         />
       )}
+
+      {/* Keyboard Shortcuts Help Modal */}
+      <TraceShortcutsModal
+        isOpen={isShortcutsOpen}
+        onClose={() => setIsShortcutsOpen(false)}
+      />
     </div>
   );
 }
