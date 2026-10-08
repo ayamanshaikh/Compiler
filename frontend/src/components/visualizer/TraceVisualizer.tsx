@@ -21,6 +21,7 @@ import {
   Check,
   Bookmark,
   BookmarkCheck,
+  SlidersHorizontal,
 } from "lucide-react";
 import { TraceResponsePayload, TraceStep } from "@/lib/api/types";
 import { Button } from "@/components/ui/Button";
@@ -78,8 +79,12 @@ export function TraceVisualizer({ trace, sourceCode }: TraceVisualizerProps) {
     [normalizedEvents]
   );
 
+  const [visualDensity, setVisualDensity] = useState<"compact" | "comfortable" | "spacious">(
+    preferences?.visualDensity === "compact" ? "compact" : "comfortable"
+  );
+  const [isHighContrast, setIsHighContrast] = useState<boolean>(false);
   const baseSpeed = preferences?.visualizerSpeed || 600;
-  const isCompact = preferences?.visualDensity === "compact";
+  const isCompact = visualDensity === "compact";
   const detailLevel = preferences?.visualizationDetail || "standard";
 
   // Playback timer loop
@@ -400,6 +405,34 @@ export function TraceVisualizer({ trace, sourceCode }: TraceVisualizerProps) {
               <Bookmark className="w-3.5 h-3.5" />
             )}
           </button>
+          <button
+            type="button"
+            onClick={() =>
+              setVisualDensity((d) =>
+                d === "comfortable"
+                  ? "compact"
+                  : d === "compact"
+                  ? "spacious"
+                  : "comfortable"
+              )
+            }
+            className="px-2 py-1 text-[11px] font-mono rounded border border-zinc-800 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800 transition-colors cursor-pointer capitalize"
+            title={`Display Density: ${visualDensity} (click to toggle)`}
+          >
+            {visualDensity}
+          </button>
+          <button
+            type="button"
+            onClick={() => setIsHighContrast((c) => !c)}
+            className={`p-1.5 rounded transition-colors cursor-pointer ${
+              isHighContrast
+                ? "text-yellow-300 bg-yellow-500/15 border border-yellow-500/40"
+                : "text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800"
+            }`}
+            title={isHighContrast ? "High Contrast Mode: Active" : "Toggle High Contrast Mode"}
+          >
+            <SlidersHorizontal className="w-3.5 h-3.5" />
+          </button>
         </div>
       </Card>
 
@@ -502,9 +535,19 @@ export function TraceVisualizer({ trace, sourceCode }: TraceVisualizerProps) {
 
       {/* View Mode Content: Visual Inspector vs Step-by-Step Narrative */}
       {viewMode === "visual" ? (
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+        <div className={`grid grid-cols-1 lg:grid-cols-12 ${visualDensity === "compact" ? "gap-2.5" : visualDensity === "spacious" ? "gap-6" : "gap-4"}`}>
           {/* Source Code Line View with Step Highlight */}
-          <div className={`lg:col-span-7 bg-zinc-950 border border-zinc-800 rounded-lg p-3 font-mono overflow-auto max-h-[460px] ${isCompact ? "text-[11px]" : "text-xs"}`}>
+          <div className={`lg:col-span-7 rounded-lg font-mono overflow-auto max-h-[460px] ${
+            isHighContrast
+              ? "bg-black border-2 border-zinc-400 text-white"
+              : "bg-zinc-950 border border-zinc-800"
+          } ${
+            visualDensity === "compact"
+              ? "p-2 text-[11px]"
+              : visualDensity === "spacious"
+              ? "p-4 text-sm"
+              : "p-3 text-xs"
+          }`}>
             <div className="flex items-center gap-2 pb-2 mb-2 border-b border-zinc-800 text-zinc-400">
               <Code2 className="w-3.5 h-3.5" />
               <span className="font-semibold text-zinc-300">Program Execution Line Highlight</span>

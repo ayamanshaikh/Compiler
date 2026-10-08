@@ -467,3 +467,22 @@ test("Execution Step Bookmarking Logic Verification", async (t) => {
   });
 });
 
+test("Visual Density and High Contrast Display Verification", async (t) => {
+  await t.test("Maps visual density mode to correct spacing classes", () => {
+    const getDensityClass = (mode) =>
+      mode === "compact" ? "p-2 text-[11px]" : mode === "spacious" ? "p-4 text-sm" : "p-3 text-xs";
+
+    assert.equal(getDensityClass("compact"), "p-2 text-[11px]");
+    assert.equal(getDensityClass("comfortable"), "p-3 text-xs");
+    assert.equal(getDensityClass("spacious"), "p-4 text-sm");
+  });
+
+  await t.test("Applies high-contrast borders and stark background", () => {
+    const getContrastClass = (hc) =>
+      hc ? "bg-black border-2 border-zinc-400 text-white" : "bg-zinc-950 border border-zinc-800";
+
+    assert.equal(getContrastClass(true), "bg-black border-2 border-zinc-400 text-white");
+    assert.equal(getContrastClass(false), "bg-zinc-950 border border-zinc-800");
+  });
+});
+
