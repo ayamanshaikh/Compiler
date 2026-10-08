@@ -267,3 +267,24 @@ test("Code Concept Detector Syntactic Discovery Verification", async (t) => {
     assert.equal(isRecursive("fib", sample), true);
   });
 });
+
+test("Relational Comparison Evaluation Concept Verification", async (t) => {
+  await t.test("Identifies relational comparison operators", () => {
+    const isComparison = (cond) => /(>=|<=|==|!=|>|<)/.test(cond);
+    assert.equal(isComparison("age >= 18"), true);
+    assert.equal(isComparison("x == 42"), true);
+    assert.equal(isComparison("isValid"), false);
+  });
+
+  await t.test("Evaluates comparison outcome correctly", () => {
+    const evaluate = (lhs, op, rhs) => {
+      if (op === ">=") return lhs >= rhs;
+      if (op === "<=") return lhs <= rhs;
+      if (op === "==") return lhs === rhs;
+      if (op === "!=") return lhs !== rhs;
+      return false;
+    };
+    assert.equal(evaluate(20, ">=", 18), true);
+    assert.equal(evaluate(15, ">=", 18), false);
+  });
+});

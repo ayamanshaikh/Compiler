@@ -265,6 +265,7 @@ export type VisualizationMode = "VISUAL_EXECUTION" | "EXPLANATION_FALLBACK";
 export type VisualRendererType =
   | "VARIABLE"
   | "EXPRESSION"
+  | "COMPARISON"
   | "CONDITION"
   | "LOOP"
   | "ARRAY"

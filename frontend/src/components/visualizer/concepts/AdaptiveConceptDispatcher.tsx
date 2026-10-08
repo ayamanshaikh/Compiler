@@ -11,6 +11,7 @@ import { LoopConceptRenderer } from "./LoopConceptRenderer";
 import { FunctionConceptRenderer } from "./FunctionConceptRenderer";
 import { OutputConceptRenderer } from "./OutputConceptRenderer";
 import { ExpressionConceptRenderer } from "./ExpressionConceptRenderer";
+import { ComparisonConceptRenderer } from "./ComparisonConceptRenderer";
 import { RecursionConceptRenderer } from "./RecursionConceptRenderer";
 import { ObjectConceptRenderer } from "./ObjectConceptRenderer";
 import { StepExplanationCard } from "../explanation/StepExplanationCard";
@@ -72,6 +73,9 @@ export function AdaptiveConceptDispatcher({ event, sourceLines }: AdaptiveConcep
             )}
             {decision.rendererType === "CONDITION" && (
               <ConditionConceptRenderer event={event} />
+            )}
+            {decision.rendererType === "COMPARISON" && (
+              <ComparisonConceptRenderer event={event} />
             )}
             {decision.rendererType === "LOOP" && (
               <LoopConceptRenderer event={event} />

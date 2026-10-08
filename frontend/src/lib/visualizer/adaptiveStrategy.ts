@@ -134,6 +134,18 @@ export function canVisualizeObject(event: NormalizedExecutionEvent): boolean {
   return hasCustomHeapObj;
 }
 
+export function canVisualizeComparison(event: NormalizedExecutionEvent): boolean {
+  if (event.conceptType === "COMPARISON") return true;
+  if (
+    event.conceptType === "CONDITION_CHECK" &&
+    typeof event.metadata?.condition === "string" &&
+    /(>=|<=|==|!=|>|<)/.test(event.metadata.condition)
+  ) {
+    return true;
+  }
+  return false;
+}
+
 // ---------------------------------------------------------------------------
 // Extensible Strategy Handlers Registry
 // ---------------------------------------------------------------------------
@@ -149,6 +161,20 @@ const STRATEGY_HANDLERS: ConceptStrategyHandler[] = [
       rendererType: "ARRAY",
       confidence: "FULL",
       reason: `Array mutation detected on ${event.symbol || "indexed structure"} with indexed cell tracking.`,
+      suggestedDetailLevel: "beginner",
+      conceptType: event.conceptType,
+    }),
+  },
+  {
+    id: "comparison-handler",
+    rendererType: "COMPARISON",
+    priority: 92,
+    match: canVisualizeComparison,
+    evaluate: (event) => ({
+      mode: "VISUAL_EXECUTION",
+      rendererType: "COMPARISON",
+      confidence: "FULL",
+      reason: `Relational comparison (${event.metadata?.condition || event.symbol || "a == b"}) evaluated to ${event.currentValue === "true" ? "TRUE" : "FALSE"}.`,
       suggestedDetailLevel: "beginner",
       conceptType: event.conceptType,
     }),
