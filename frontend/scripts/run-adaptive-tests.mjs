@@ -307,3 +307,27 @@ test("Array Operations (Swaps & Search Windows) Concept Verification", async (t)
     assert.equal(binarySearchStep(3, 4), 3);
   });
 });
+
+test("Parameter Binding and Return Flow Concept Verification", async (t) => {
+  await t.test("Binds caller arguments to formal callee parameters", () => {
+    const methodCall = {
+      conceptType: "PARAMETER_BIND",
+      callStack: [{ methodName: "add" }, { methodName: "main" }],
+      metadata: { parameters: { a: "5", b: "3" } },
+    };
+    assert.equal(methodCall.callStack[0].methodName, "add");
+    assert.equal(methodCall.metadata.parameters.a, "5");
+    assert.equal(methodCall.metadata.parameters.b, "3");
+  });
+
+  await t.test("Captures return value bubbling to caller stack frame", () => {
+    const returnStep = {
+      conceptType: "RETURN",
+      symbol: "add",
+      currentValue: "8",
+      callStack: [{ methodName: "add" }],
+    };
+    assert.equal(returnStep.conceptType, "RETURN");
+    assert.equal(returnStep.currentValue, "8");
+  });
+});

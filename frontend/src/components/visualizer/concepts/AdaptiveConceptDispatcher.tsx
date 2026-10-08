@@ -10,6 +10,7 @@ import { ArrayOperationRenderer } from "./ArrayOperationRenderer";
 import { ConditionConceptRenderer } from "./ConditionConceptRenderer";
 import { LoopConceptRenderer } from "./LoopConceptRenderer";
 import { FunctionConceptRenderer } from "./FunctionConceptRenderer";
+import { ParameterBindingConceptRenderer } from "./ParameterBindingConceptRenderer";
 import { OutputConceptRenderer } from "./OutputConceptRenderer";
 import { ExpressionConceptRenderer } from "./ExpressionConceptRenderer";
 import { ComparisonConceptRenderer } from "./ComparisonConceptRenderer";
@@ -86,6 +87,9 @@ export function AdaptiveConceptDispatcher({ event, sourceLines }: AdaptiveConcep
             )}
             {decision.rendererType === "CALL_STACK" && (
               <FunctionConceptRenderer event={event} />
+            )}
+            {decision.rendererType === "PARAMETER_BIND" && (
+              <ParameterBindingConceptRenderer event={event} />
             )}
             {decision.rendererType === "RECURSION" && (
               <RecursionConceptRenderer event={event} />

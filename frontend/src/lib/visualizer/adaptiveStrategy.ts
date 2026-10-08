@@ -160,6 +160,18 @@ export function canVisualizeArrayOperation(event: NormalizedExecutionEvent): boo
   return false;
 }
 
+export function canVisualizeParameterBinding(event: NormalizedExecutionEvent): boolean {
+  if (event.conceptType === "PARAMETER_BIND") return true;
+  if (event.conceptType === "RETURN" && event.currentValue !== undefined) return true;
+  if (
+    event.conceptType === "METHOD_CALL" &&
+    (event.metadata?.parameters !== undefined || Object.keys(event.variables).length > 0)
+  ) {
+    return true;
+  }
+  return false;
+}
+
 // ---------------------------------------------------------------------------
 // Extensible Strategy Handlers Registry
 // ---------------------------------------------------------------------------
@@ -259,6 +271,23 @@ const STRATEGY_HANDLERS: ConceptStrategyHandler[] = [
       rendererType: "OBJECT",
       confidence: "FULL",
       reason: `Object instance allocated on heap with reference '${event.symbol || "objectRef"}'.`,
+      suggestedDetailLevel: "beginner",
+      conceptType: event.conceptType,
+    }),
+  },
+  {
+    id: "parameter-bind-handler",
+    rendererType: "PARAMETER_BIND",
+    priority: 72,
+    match: canVisualizeParameterBinding,
+    evaluate: (event) => ({
+      mode: "VISUAL_EXECUTION",
+      rendererType: "PARAMETER_BIND",
+      confidence: "FULL",
+      reason:
+        event.conceptType === "RETURN"
+          ? `Return value ${event.currentValue} bubbling to caller frame.`
+          : `Method invocation parameter binding for '${event.callStack?.[0]?.methodName || event.symbol || "method"}'.`,
       suggestedDetailLevel: "beginner",
       conceptType: event.conceptType,
     }),
