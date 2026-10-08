@@ -11,6 +11,8 @@ import { LoopConceptRenderer } from "./LoopConceptRenderer";
 import { FunctionConceptRenderer } from "./FunctionConceptRenderer";
 import { OutputConceptRenderer } from "./OutputConceptRenderer";
 import { ExpressionConceptRenderer } from "./ExpressionConceptRenderer";
+import { RecursionConceptRenderer } from "./RecursionConceptRenderer";
+import { ObjectConceptRenderer } from "./ObjectConceptRenderer";
 import { StepExplanationCard } from "../explanation/StepExplanationCard";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
@@ -76,6 +78,12 @@ export function AdaptiveConceptDispatcher({ event, sourceLines }: AdaptiveConcep
             )}
             {decision.rendererType === "CALL_STACK" && (
               <FunctionConceptRenderer event={event} />
+            )}
+            {decision.rendererType === "RECURSION" && (
+              <RecursionConceptRenderer event={event} />
+            )}
+            {decision.rendererType === "OBJECT" && (
+              <ObjectConceptRenderer event={event} />
             )}
             {decision.rendererType === "EXPRESSION" && (
               <ExpressionConceptRenderer event={event} />

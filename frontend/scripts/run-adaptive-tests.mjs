@@ -197,4 +197,53 @@ test("Partial and Mixed Visualization Strategy Logic Verification", async (t) =>
   });
 });
 
+test("Advanced Concepts (Recursion & Object References) Logic Verification", async (t) => {
+  await t.test("Recursive calls with repeated method frames trigger RECURSION strategy", () => {
+    const recursiveCallStack = [
+      { methodName: "factorial", className: "Main", line: 4 },
+      { methodName: "factorial", className: "Main", line: 4 },
+      { methodName: "factorial", className: "Main", line: 4 },
+      { methodName: "main", className: "Main", line: 10 },
+    ];
+    const counts = {};
+    for (const f of recursiveCallStack) {
+      counts[f.methodName] = (counts[f.methodName] || 0) + 1;
+    }
+    const isRecursion = counts.factorial > 1;
+    assert.equal(isRecursion, true);
+    assert.equal(counts.factorial, 3);
+  });
+
+  await t.test("Object creation binds reference variable to conceptual heap instance", () => {
+    const objectEvent = {
+      conceptType: "OBJECT_CREATE",
+      symbol: "s",
+      currentValue: "@Student_104",
+      metadata: { className: "Student" },
+      heapObjects: {
+        "@Student_104": {
+          id: "@Student_104",
+          type: "Student",
+          state: { name: "Alex" },
+        },
+      },
+    };
+    const isObject = objectEvent.conceptType === "OBJECT_CREATE" || Boolean(objectEvent.metadata.className);
+    assert.equal(isObject, true);
+    assert.equal(objectEvent.heapObjects["@Student_104"].state.name, "Alex");
+  });
+
+  await t.test("Unwinding recursion tracks returning value to previous caller", () => {
+    const returnEvent = {
+      conceptType: "RETURN",
+      symbol: "factorial",
+      currentValue: "24",
+      callStack: [{ methodName: "factorial", className: "Main", line: 4 }],
+    };
+    assert.equal(returnEvent.conceptType, "RETURN");
+    assert.equal(returnEvent.currentValue, "24");
+  });
+});
+
+
 

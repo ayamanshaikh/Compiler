@@ -106,6 +106,34 @@ export function canVisualizeExpression(event: NormalizedExecutionEvent): boolean
   return false;
 }
 
+export function canVisualizeRecursion(event: NormalizedExecutionEvent): boolean {
+  if (event.conceptType === "RECURSION") return true;
+  if (!event.callStack || event.callStack.length < 2) return false;
+  const counts: Record<string, number> = {};
+  for (const f of event.callStack) {
+    counts[f.methodName] = (counts[f.methodName] || 0) + 1;
+    if (counts[f.methodName] > 1) return true;
+  }
+  return false;
+}
+
+export function canVisualizeObject(event: NormalizedExecutionEvent): boolean {
+  if (
+    event.conceptType === "OBJECT_CREATE" ||
+    event.conceptType === "CONSTRUCTOR_CALL" ||
+    event.conceptType === "FIELD_UPDATE"
+  ) {
+    return true;
+  }
+  if (event.metadata?.className || event.metadata?.isConstructor) {
+    return true;
+  }
+  const hasCustomHeapObj = Object.values(event.heapObjects || {}).some(
+    (obj) => obj.type !== "Array" && !/\[\d+\]/.test(obj.id)
+  );
+  return hasCustomHeapObj;
+}
+
 // ---------------------------------------------------------------------------
 // Extensible Strategy Handlers Registry
 // ---------------------------------------------------------------------------
@@ -140,6 +168,20 @@ const STRATEGY_HANDLERS: ConceptStrategyHandler[] = [
     }),
   },
   {
+    id: "recursion-handler",
+    rendererType: "RECURSION",
+    priority: 85,
+    match: canVisualizeRecursion,
+    evaluate: (event) => ({
+      mode: "VISUAL_EXECUTION",
+      rendererType: "RECURSION",
+      confidence: "FULL",
+      reason: `Recursive invocation stack detected for method '${event.callStack?.[0]?.methodName || "function"}' (depth ${event.callStack?.length || 1}).`,
+      suggestedDetailLevel: "detailed",
+      conceptType: event.conceptType,
+    }),
+  },
+  {
     id: "loop-handler",
     rendererType: "LOOP",
     priority: 80,
@@ -149,6 +191,20 @@ const STRATEGY_HANDLERS: ConceptStrategyHandler[] = [
       rendererType: "LOOP",
       confidence: "FULL",
       reason: `Loop iteration progression with active cycle metrics.`,
+      suggestedDetailLevel: "beginner",
+      conceptType: event.conceptType,
+    }),
+  },
+  {
+    id: "object-handler",
+    rendererType: "OBJECT",
+    priority: 75,
+    match: canVisualizeObject,
+    evaluate: (event) => ({
+      mode: "VISUAL_EXECUTION",
+      rendererType: "OBJECT",
+      confidence: "FULL",
+      reason: `Object instance allocated on heap with reference '${event.symbol || "objectRef"}'.`,
       suggestedDetailLevel: "beginner",
       conceptType: event.conceptType,
     }),

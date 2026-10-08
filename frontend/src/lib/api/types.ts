@@ -232,6 +232,11 @@ export type NormalizedConceptType =
   | "COLLECTION_OPERATION"
   | "EXCEPTION"
   | "OUTPUT"
+  | "RECURSION"
+  | "COMPARISON"
+  | "SWAP"
+  | "SEARCH_STEP"
+  | "SORT_STEP"
   | "LINE_EXECUTION"
   | "GENERIC_STEP";
 
@@ -264,6 +269,8 @@ export type VisualRendererType =
   | "LOOP"
   | "ARRAY"
   | "CALL_STACK"
+  | "RECURSION"
+  | "OBJECT"
   | "OUTPUT"
   | "GENERIC_VISUAL"
   | "NONE";
