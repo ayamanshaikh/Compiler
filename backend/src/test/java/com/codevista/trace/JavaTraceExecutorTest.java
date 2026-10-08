@@ -195,4 +195,41 @@ class JavaTraceExecutorTest {
         assertThat(foundAssignment).isTrue();
         assertThat(foundPrint).isTrue();
     }
+
+    @Test
+    @DisplayName("7. Program with helper class and object creation traces authentic execution")
+    void testObjectAndMethodTracing() {
+        String code = """
+                public class Main {
+                    static class Student {
+                        String name;
+                        int score;
+
+                        Student(String name, int score) {
+                            this.name = name;
+                            this.score = score;
+                        }
+                    }
+
+                    public static void main(String[] args) {
+                        Student s = new Student("Alex", 95);
+                        System.out.println("Enrolled student: " + s.name);
+                    }
+                }
+                """;
+
+        ExecutionTrace trace = executor.trace(new ExecutionRequest(Language.JAVA, code, ""));
+
+        assertThat(trace.isSuccess()).isTrue();
+        assertThat(trace.getStatus()).isEqualTo(ExecutionStatus.SUCCESS);
+        assertThat(trace.getFinalOutput()).contains("Enrolled student: Alex");
+
+        boolean foundObject = false;
+        for (TraceStep step : trace.getSteps()) {
+            if ("s".equals(step.getSymbol()) && "Student".equals(step.getMetadata().get("type"))) {
+                foundObject = true;
+            }
+        }
+        assertThat(foundObject).isTrue();
+    }
 }

@@ -70,4 +70,34 @@ class JavaSourceInstrumenterTest {
 
         assertThat(result).contains("CodeVistaTraceCollector.arrayMutate(\"nums\", (int)(0), String.valueOf(nums[0]), 4);");
     }
+
+    @Test
+    @DisplayName("JavaSourceInstrumenter avoids injecting statement hooks at class scope fields")
+    void shouldNotInstrumentClassScopeFields() {
+        String code = """
+                public class Main {
+                    static class Student {
+                        String name;
+                        int score;
+
+                        Student(String name, int score) {
+                            this.name = name;
+                            this.score = score;
+                        }
+                    }
+
+                    public static void main(String[] args) {
+                        Student s = new Student("Alex", 95);
+                    }
+                }
+                """;
+
+        String result = instrumenter.instrument(code);
+
+        // Fields must remain clean
+        assertThat(result).doesNotContain("CodeVistaTraceCollector.line(4, \"Executed line 4\");");
+        assertThat(result).doesNotContain("CodeVistaTraceCollector.line(5, \"Executed line 5\");");
+        // Main should still be instrumented
+        assertThat(result).contains("CodeVistaTraceCollector.var(\"s\", \"Student\", String.valueOf(s), 13);");
+    }
 }

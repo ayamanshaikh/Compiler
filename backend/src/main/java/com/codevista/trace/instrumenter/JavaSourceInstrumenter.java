@@ -31,6 +31,10 @@ public class JavaSourceInstrumenter {
             "^(\\s*)([a-zA-Z_$][a-zA-Z0-9_$]*)\\[([^\\]]+)\\]\s*=\s*(.+);$"
     );
 
+    private static final Pattern CLASS_DEF_PATTERN = Pattern.compile(
+            "\\b(class|interface|enum|record)\\b\\s+[A-Za-z0-9_$]+"
+    );
+
     private static final Pattern MAIN_METHOD_PATTERN = Pattern.compile(
             "public\\s+static\\s+void\\s+main\\s*\\([^)]*\\)\\s*(?:throws\\s+[^{]+)?\\{"
     );
@@ -50,8 +54,10 @@ public class JavaSourceInstrumenter {
         String[] rawLines = sourceCode.split("\\r?\\n", -1);
         List<String> outputLines = new ArrayList<>();
 
-        boolean insideClass = false;
         boolean hasImportAdded = false;
+        int braceDepth = 0;
+        java.util.Set<Integer> classScopeDepths = new java.util.HashSet<>();
+        boolean pendingClassScope = false;
 
         for (int i = 0; i < rawLines.length; i++) {
             int originalLineNum = i + 1;
@@ -71,17 +77,28 @@ public class JavaSourceInstrumenter {
                 }
             }
 
+            // Detect class / interface / enum / record declarations
+            if (CLASS_DEF_PATTERN.matcher(trimmed).find()) {
+                pendingClassScope = true;
+            }
+
             // Main method entry injection
             Matcher mainMatcher = MAIN_METHOD_PATTERN.matcher(line);
             if (mainMatcher.find()) {
+                braceDepth++;
                 outputLines.add(line);
                 outputLines.add("        CodeVistaTraceCollector.registerHook();");
                 outputLines.add("        CodeVistaTraceCollector.line(" + originalLineNum + ", \"Entered main method\");");
                 continue;
             }
 
-            // Check if line is inside a block / statement
+            // Check if line opens a block
             if (trimmed.equals("{") || trimmed.endsWith("{")) {
+                braceDepth++;
+                if (pendingClassScope) {
+                    classScopeDepths.add(braceDepth);
+                    pendingClassScope = false;
+                }
                 outputLines.add(line);
                 if (trimmed.startsWith("for") || trimmed.startsWith("while")) {
                     outputLines.add("        CodeVistaTraceCollector.line(" + originalLineNum + ", \"Loop body iteration\");");
@@ -89,7 +106,21 @@ public class JavaSourceInstrumenter {
                 continue;
             }
 
-            if (trimmed.equals("}") || trimmed.isEmpty() || trimmed.startsWith("//") || trimmed.startsWith("/*") || trimmed.startsWith("*")) {
+            if (trimmed.equals("}") || trimmed.endsWith("}")) {
+                classScopeDepths.remove(braceDepth);
+                braceDepth = Math.max(0, braceDepth - 1);
+                outputLines.add(line);
+                continue;
+            }
+
+            if (trimmed.isEmpty() || trimmed.startsWith("//") || trimmed.startsWith("/*") || trimmed.startsWith("*")) {
+                outputLines.add(line);
+                continue;
+            }
+
+            // If we are at class / type scope (not inside a method or constructor), do not inject statement trace hooks
+            boolean isInsideMethod = braceDepth > 0 && !classScopeDepths.contains(braceDepth);
+            if (!isInsideMethod) {
                 outputLines.add(line);
                 continue;
             }

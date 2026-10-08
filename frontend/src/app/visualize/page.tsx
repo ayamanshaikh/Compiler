@@ -27,22 +27,155 @@ import {
   RefreshCw,
   BarChart3,
   Terminal,
+  Cpu,
+  Layers,
+  Repeat,
+  Box,
+  Binary,
+  Code2,
+  Workflow,
+  CheckCircle2,
 } from "lucide-react";
 
-const DEFAULT_JAVA_CODE = `public class Main {
-    public static void main(String[] args) {
-        int a = 10;
-        int b = 25;
-        int sum = a + b;
-        System.out.println("Computed Sum: " + sum);
+export interface TracePreset {
+  id: string;
+  name: string;
+  category: "Variables" | "Loops" | "Arrays" | "Recursion" | "Objects" | "Mixed";
+  badge: string;
+  description: string;
+  sourceCode: string;
+}
 
-        int[] arr = new int[3];
-        arr[0] = 5;
-        arr[1] = 15;
-        arr[2] = 25;
-        System.out.println("Array Initialized");
+export const TRACE_PRESETS: TracePreset[] = [
+  {
+    id: "variables-arithmetic",
+    name: "Variables & Arithmetic Flow",
+    category: "Variables",
+    badge: "EXPRESSIONS",
+    description: "Evaluates arithmetic input flow (price * quantity) and scalar mutations.",
+    sourceCode: `public class Main {
+    public static void main(String[] args) {
+        int price = 100;
+        int quantity = 3;
+        int total = price * quantity;
+        System.out.println("Computed Total: " + total);
+
+        int discount = 20;
+        int netPayable = total - discount;
+        System.out.println("Net Payable: " + netPayable);
     }
-}`;
+}`,
+  },
+  {
+    id: "condition-loops",
+    name: "Condition Branches & Loops",
+    category: "Loops",
+    badge: "LOOPS & BRANCHES",
+    description: "Shows changing loop state per iteration and boolean branch divergence.",
+    sourceCode: `public class Main {
+    public static void main(String[] args) {
+        int count = 0;
+        for (int i = 0; i < 5; i++) {
+            count += i;
+            System.out.println("Loop pass i=" + i + ", running sum=" + count);
+        }
+
+        int threshold = 8;
+        if (count >= threshold) {
+            System.out.println("Target threshold reached!");
+        }
+    }
+}`,
+  },
+  {
+    id: "array-mutations",
+    name: "Array Index Mutations",
+    category: "Arrays",
+    badge: "ARRAY MUTATION",
+    description: "Tracks cell allocations, index highlight, and value updates in memory.",
+    sourceCode: `public class Main {
+    public static void main(String[] args) {
+        int[] numbers = new int[4];
+        numbers[0] = 10;
+        numbers[1] = 20;
+        numbers[2] = 30;
+        numbers[3] = 40;
+        System.out.println("Array populated with 4 elements");
+
+        // Mutate middle element
+        numbers[2] = 99;
+        System.out.println("Updated index 2 to 99");
+    }
+}`,
+  },
+  {
+    id: "recursion-factorial",
+    name: "Recursive Call Stack",
+    category: "Recursion",
+    badge: "CALL LADDER",
+    description: "Visualizes stack growth across recursive frames and unwinding return flow.",
+    sourceCode: `public class Main {
+    public static int factorial(int n) {
+        if (n <= 1) {
+            return 1;
+        }
+        return n * factorial(n - 1);
+    }
+
+    public static void main(String[] args) {
+        int num = 4;
+        int result = factorial(num);
+        System.out.println("Factorial of 4 is: " + result);
+    }
+}`,
+  },
+  {
+    id: "object-references",
+    name: "Object References & Heap",
+    category: "Objects",
+    badge: "HEAP INSTANCE",
+    description: "Binds reference pointers to conceptual heap objects with field inspections.",
+    sourceCode: `public class Main {
+    static class Student {
+        String name;
+        int score;
+
+        Student(String name, int score) {
+            this.name = name;
+            this.score = score;
+        }
+    }
+
+    public static void main(String[] args) {
+        Student s = new Student("Alex", 95);
+        System.out.println("Enrolled student: " + s.name);
+    }
+}`,
+  },
+  {
+    id: "mixed-pipeline",
+    name: "Mixed Multi-Phase Program",
+    category: "Mixed",
+    badge: "ADAPTIVE MIXED",
+    description: "Combines visual mutations with non-visual statements and structured explanation fallback.",
+    sourceCode: `public class Main {
+    public static void main(String[] args) {
+        int x = 10;
+        System.out.println("Starting computation sequence");
+        x = x + 5;
+
+        int[] scores = new int[3];
+        scores[0] = x;
+        scores[1] = x * 2;
+        scores[2] = scores[0] + scores[1];
+
+        System.out.println("Final score: " + scores[2]);
+    }
+}`,
+  },
+];
+
+const DEFAULT_JAVA_CODE = TRACE_PRESETS[0].sourceCode;
 
 function VisualizeContent() {
   const searchParams = useSearchParams();
@@ -65,7 +198,35 @@ function VisualizeContent() {
   // -------------------------------------------------------------
   // JVM Program Tracer State
   // -------------------------------------------------------------
-  const [sourceCode, setSourceCode] = useState<string>(DEFAULT_JAVA_CODE);
+  const [sourceCode, setSourceCode] = useState<string>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const cached = sessionStorage.getItem("codevista_trace_source");
+        if (cached && cached.trim()) {
+          sessionStorage.removeItem("codevista_trace_source");
+          return cached;
+        }
+      } catch {
+        // Fallback to default
+      }
+    }
+    return DEFAULT_JAVA_CODE;
+  });
+
+  const [selectedPresetId, setSelectedPresetId] = useState<string>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const cached = sessionStorage.getItem("codevista_trace_source");
+        if (cached && cached.trim()) {
+          return "";
+        }
+      } catch {
+        // Fallback to default
+      }
+    }
+    return TRACE_PRESETS[0].id;
+  });
+
   const [isJvmLoading, setIsJvmLoading] = useState<boolean>(false);
   const [jvmTrace, setJvmTrace] = useState<TraceResponsePayload | null>(null);
   const [jvmError, setJvmError] = useState<string | null>(null);
@@ -328,13 +489,13 @@ function VisualizeContent() {
         {/* MODE 2: JVM Program Tracer (Line-by-line Child JVM) */}
         {activeMode === "trace" && (
           <div className="space-y-6">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
                 <h3 className="text-sm font-semibold text-zinc-200">
-                  JVM Line-by-Line Execution Tracer
+                  Adaptive JVM Program Tracer
                 </h3>
                 <p className="text-xs text-zinc-400 mt-0.5">
-                  Type any custom Java program to compile and trace internal variable mutations.
+                  Execute Java programs in an isolated OpenJDK 25 sandbox with intelligent Mode A (Visual Animation) or Mode B (Step-by-Step Fallback Narrative).
                 </p>
               </div>
               <Button
@@ -342,7 +503,7 @@ function VisualizeContent() {
                 size="sm"
                 onClick={handleRunJvmTrace}
                 disabled={isJvmLoading}
-                className="bg-indigo-600 hover:bg-indigo-500 text-white font-medium"
+                className="bg-indigo-600 hover:bg-indigo-500 text-white font-medium shrink-0"
               >
                 {isJvmLoading ? (
                   <RefreshCw className="w-4 h-4 animate-spin mr-1.5" />
@@ -351,6 +512,63 @@ function VisualizeContent() {
                 )}
                 {isJvmLoading ? "Tracing JVM..." : "Generate Execution Trace"}
               </Button>
+            </div>
+
+            {/* Presets Archetypes Carousel / Grid */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-mono font-medium text-zinc-400 flex items-center gap-1.5">
+                  <Workflow className="w-3.5 h-3.5 text-accent" />
+                  Curated Concept Archetypes
+                </span>
+                <span className="text-[11px] text-zinc-500 font-mono">
+                  Click any archetype to load and trace
+                </span>
+              </div>
+
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5">
+                {TRACE_PRESETS.map((preset) => {
+                  const isSelected = selectedPresetId === preset.id;
+                  return (
+                    <button
+                      key={preset.id}
+                      type="button"
+                      onClick={() => {
+                        setSelectedPresetId(preset.id);
+                        setSourceCode(preset.sourceCode);
+                        setJvmTrace(null);
+                        setJvmError(null);
+                      }}
+                      className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between ${
+                        isSelected
+                          ? "bg-accent/15 border-accent/70 shadow-sm shadow-accent/20"
+                          : "bg-zinc-900/60 border-zinc-800/80 hover:bg-zinc-800/50 hover:border-zinc-700"
+                      }`}
+                    >
+                      <div>
+                        <div className="flex items-center justify-between gap-1 mb-1">
+                          <span className="text-[9px] font-mono uppercase tracking-wider text-zinc-400">
+                            {preset.category}
+                          </span>
+                          {isSelected && (
+                            <CheckCircle2 className="w-3 h-3 text-accent shrink-0" />
+                          )}
+                        </div>
+                        <div
+                          className={`text-xs font-semibold line-clamp-1 ${
+                            isSelected ? "text-accent" : "text-zinc-200"
+                          }`}
+                        >
+                          {preset.name}
+                        </div>
+                      </div>
+                      <div className="mt-2 text-[10px] text-zinc-500 line-clamp-2">
+                        {preset.description}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
 
             {jvmError && (
@@ -363,7 +581,7 @@ function VisualizeContent() {
             {jvmTrace && jvmTrace.steps && jvmTrace.steps.length > 0 ? (
               <div className="flex flex-col gap-6">
                 <TraceVisualizer trace={jvmTrace} sourceCode={sourceCode} />
-                <div className="flex justify-end">
+                <div className="flex justify-end gap-2">
                   <Button
                     variant="ghost"
                     size="sm"
@@ -376,11 +594,16 @@ function VisualizeContent() {
             ) : (
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
                 <div className="lg:col-span-8 flex flex-col gap-3">
-                  <Card className="flex flex-col flex-1 bg-zinc-950 border-zinc-800">
+                  <Card className="flex flex-col flex-1 bg-zinc-950 border-zinc-800 shadow-xs">
                     <CardHeader className="py-2.5 px-4 border-b border-zinc-800 flex justify-between items-center">
                       <div className="flex items-center gap-2 text-xs font-mono text-zinc-300">
-                        <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
-                        <span>Java Program to Trace</span>
+                        <Code2 className="w-3.5 h-3.5 text-accent" />
+                        <span>Java Source Program</span>
+                        {selectedPresetId && (
+                          <Badge variant="neutral" size="sm">
+                            {TRACE_PRESETS.find((p) => p.id === selectedPresetId)?.badge}
+                          </Badge>
+                        )}
                       </div>
                       <span className="text-[11px] text-zinc-500 font-mono">
                         Main.java
@@ -389,10 +612,13 @@ function VisualizeContent() {
                     <CardContent className="p-0">
                       <textarea
                         value={sourceCode}
-                        onChange={(e) => setSourceCode(e.target.value)}
-                        rows={14}
+                        onChange={(e) => {
+                          setSourceCode(e.target.value);
+                          setSelectedPresetId("");
+                        }}
+                        rows={16}
                         className="w-full bg-zinc-950 font-mono text-xs text-zinc-200 p-4 outline-none resize-none leading-relaxed"
-                        placeholder="Enter Java source code..."
+                        placeholder="Write or paste any Java program to trace..."
                       />
                     </CardContent>
                   </Card>
@@ -400,21 +626,56 @@ function VisualizeContent() {
 
                 <div className="lg:col-span-4 flex flex-col gap-4">
                   <Card className="p-4 bg-zinc-900 border-zinc-800 text-xs flex flex-col gap-2">
-                    <h4 className="font-semibold text-zinc-200">
-                      Authentic Execution Intelligence
-                    </h4>
+                    <div className="flex items-center gap-2 font-semibold text-zinc-200">
+                      <Sparkles className="w-4 h-4 text-accent" />
+                      <span>Adaptive Visualization Engine</span>
+                    </div>
                     <p className="text-zinc-400 leading-relaxed">
-                      CodeVista never renders fake mock animations. The source code is compiled with OpenJDK and executed in an isolated child JVM sandbox.
+                      CodeVista dynamically determines the most meaningful representation for each execution step:
                     </p>
+                    <div className="space-y-1.5 mt-1">
+                      <div className="p-2 rounded-lg bg-zinc-950/60 border border-zinc-800/80">
+                        <span className="font-semibold text-emerald-400">Mode A — Visual Execution:</span>
+                        <p className="text-zinc-400 text-[11px] mt-0.5">
+                          Interactive visual representations for variables, arrays, expressions, loops, and call stacks.
+                        </p>
+                      </div>
+                      <div className="p-2 rounded-lg bg-zinc-950/60 border border-zinc-800/80">
+                        <span className="font-semibold text-indigo-400">Mode B — Fallback Narrative:</span>
+                        <p className="text-zinc-400 text-[11px] mt-0.5">
+                          7-part structured step card with runtime reasoning and JVM insights for non-visual code.
+                        </p>
+                      </div>
+                    </div>
                   </Card>
 
                   <Card className="p-4 bg-zinc-900 border-zinc-800 text-xs flex flex-col gap-2">
-                    <h4 className="font-semibold text-zinc-200">What You Can Inspect:</h4>
-                    <ul className="text-zinc-400 list-disc list-inside space-y-1">
-                      <li>Variable declarations & mutation values</li>
-                      <li>Array indexing and element assignments</li>
-                      <li>Call stack frames and method depth</li>
-                      <li>Step-by-step console output sync</li>
+                    <h4 className="font-semibold text-zinc-200">Supported Visual Domains:</h4>
+                    <ul className="text-zinc-400 space-y-1.5 text-[11px]">
+                      <li className="flex items-center gap-1.5">
+                        <Cpu className="w-3.5 h-3.5 text-accent shrink-0" />
+                        <span>Variables, assignments, and arithmetic expression flow</span>
+                      </li>
+                      <li className="flex items-center gap-1.5">
+                        <Repeat className="w-3.5 h-3.5 text-accent shrink-0" />
+                        <span>Loops with live iteration counters & condition checks</span>
+                      </li>
+                      <li className="flex items-center gap-1.5">
+                        <Binary className="w-3.5 h-3.5 text-accent shrink-0" />
+                        <span>Array indices, memory cell highlighting, and mutations</span>
+                      </li>
+                      <li className="flex items-center gap-1.5">
+                        <Layers className="w-3.5 h-3.5 text-accent shrink-0" />
+                        <span>Call stack frames and recursive execution ladders</span>
+                      </li>
+                      <li className="flex items-center gap-1.5">
+                        <Box className="w-3.5 h-3.5 text-accent shrink-0" />
+                        <span>Conceptual heap object graphs and reference binding</span>
+                      </li>
+                      <li className="flex items-center gap-1.5">
+                        <Terminal className="w-3.5 h-3.5 text-accent shrink-0" />
+                        <span>Console output stream synchronization</span>
+                      </li>
                     </ul>
                   </Card>
                 </div>

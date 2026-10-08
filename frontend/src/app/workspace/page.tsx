@@ -204,14 +204,24 @@ export default function WorkspacePage() {
               </div>
 
               {/* Step Trace Shortcut */}
-              <NextLink href={`/visualize?mode=trace`}>
+              <NextLink
+                href={`/visualize?mode=trace`}
+                onClick={() => {
+                  try {
+                    sessionStorage.setItem("codevista_trace_source", sourceCode);
+                  } catch {
+                    // Ignore storage errors if private mode
+                  }
+                }}
+              >
                 <Button
                   variant="outline"
                   size="sm"
                   leftIcon={<Layers className="w-3.5 h-3.5 text-accent" />}
-                  title="Visualize memory in Step Tracer"
+                  title="Visualize execution trace of current code in Adaptive Engine"
+                  className="hover:border-accent/60 hover:text-accent transition-colors"
                 >
-                  Step Trace
+                  Visualize Trace
                 </Button>
               </NextLink>
 
