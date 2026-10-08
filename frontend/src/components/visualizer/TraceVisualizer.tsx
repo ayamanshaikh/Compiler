@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import {
   Play,
   Pause,
@@ -17,6 +17,8 @@ import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { Card } from "@/components/ui/Card";
 import { useAuth } from "@/lib/context/AuthContext";
+import { normalizeTraceStep } from "@/lib/visualizer/traceNormalizer";
+import { AdaptiveConceptDispatcher } from "@/components/visualizer/concepts/AdaptiveConceptDispatcher";
 
 interface TraceVisualizerProps {
   trace: TraceResponsePayload;
@@ -33,6 +35,11 @@ export function TraceVisualizer({ trace, sourceCode }: TraceVisualizerProps) {
   const steps = trace.steps || [];
   const currentStep: TraceStep | undefined = steps[currentStepIndex];
   const sourceLines = sourceCode.split(/\r?\n/);
+
+  const currentNormalizedEvent = useMemo(
+    () => (currentStep ? normalizeTraceStep(currentStep) : null),
+    [currentStep]
+  );
 
   const baseSpeed = preferences?.visualizerSpeed || 600;
   const isCompact = preferences?.visualDensity === "compact";
@@ -223,6 +230,11 @@ export function TraceVisualizer({ trace, sourceCode }: TraceVisualizerProps) {
 
         {/* Runtime State Inspector Panels */}
         <div className="lg:col-span-5 flex flex-col gap-4 max-h-[460px] overflow-y-auto">
+          {/* Adaptive Concept Visualizer */}
+          {currentNormalizedEvent && (
+            <AdaptiveConceptDispatcher event={currentNormalizedEvent} />
+          )}
+
           {/* Variables Table */}
           <Card className={`bg-zinc-900 border-zinc-800 ${isCompact ? "p-2.5" : "p-3"}`}>
             <div className="flex items-center gap-1.5 pb-2 mb-2 border-b border-zinc-800 text-xs text-zinc-300 font-semibold">
