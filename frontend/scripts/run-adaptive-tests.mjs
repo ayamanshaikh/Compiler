@@ -446,3 +446,24 @@ test("Screen Reader ARIA Live Step Announcer Verification", async (t) => {
     assert.equal(msg, "Step 5 of 8. Line 12. Condition age >= 18 evaluated to true.");
   });
 });
+
+test("Execution Step Bookmarking Logic Verification", async (t) => {
+  await t.test("Toggles bookmark insertion and removal in sorted order", () => {
+    let bookmarks = [];
+    const toggle = (list, idx) =>
+      list.includes(idx) ? list.filter((i) => i !== idx) : [...list, idx].sort((a, b) => a - b);
+
+    bookmarks = toggle(bookmarks, 4);
+    assert.deepEqual(bookmarks, [4]);
+
+    bookmarks = toggle(bookmarks, 1);
+    assert.deepEqual(bookmarks, [1, 4]);
+
+    bookmarks = toggle(bookmarks, 8);
+    assert.deepEqual(bookmarks, [1, 4, 8]);
+
+    bookmarks = toggle(bookmarks, 4);
+    assert.deepEqual(bookmarks, [1, 8]);
+  });
+});
+

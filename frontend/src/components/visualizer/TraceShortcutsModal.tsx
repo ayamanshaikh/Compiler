@@ -2,7 +2,7 @@
 
 import React from "react";
 import { Modal } from "@/components/ui/Modal";
-import { Keyboard, Play, ChevronRight, ChevronLeft, FastForward, Rewind, Eye, HelpCircle } from "lucide-react";
+import { Keyboard, Play, ChevronRight, ChevronLeft, FastForward, Rewind, Eye, HelpCircle, Bookmark } from "lucide-react";
 
 interface TraceShortcutsModalProps {
   isOpen: boolean;
@@ -50,6 +50,11 @@ const SHORTCUTS: ShortcutItem[] = [
     keyDesc: "V",
     action: "Toggle Visual Inspector vs Narrative View",
     icon: <Eye className="w-3.5 h-3.5 text-zinc-300" />,
+  },
+  {
+    keyDesc: "B",
+    action: "Toggle Step Bookmark / Pin",
+    icon: <Bookmark className="w-3.5 h-3.5 text-accent" />,
   },
   {
     keyDesc: "? (Shift + /)",
