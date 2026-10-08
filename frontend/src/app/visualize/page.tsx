@@ -20,6 +20,7 @@ import {
   generateAlgorithmTrace,
 } from "@/lib/api/algorithm";
 import { FALLBACK_ALGORITHMS } from "@/lib/data/algorithmData";
+import { parseImportedTrace } from "@/lib/visualizer/traceExport";
 import {
   Play,
   Sparkles,
@@ -35,6 +36,7 @@ import {
   Code2,
   Workflow,
   CheckCircle2,
+  Upload,
 } from "lucide-react";
 
 export interface TracePreset {
@@ -302,6 +304,31 @@ function VisualizeContent() {
     }
   };
 
+  const handleFileImport = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const content = event.target?.result as string;
+        const parsed = parseImportedTrace(content);
+        setSourceCode(parsed.sourceCode);
+        setJvmTrace(parsed.trace);
+        setSelectedPresetId("");
+        setJvmError(null);
+      } catch (err: unknown) {
+        setJvmError(
+          err instanceof Error
+            ? err.message
+            : "Failed to parse imported trace file"
+        );
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = "";
+  };
+
   // Handle JVM execution trace
   const handleRunJvmTrace = async () => {
     setIsJvmLoading(true);
@@ -498,20 +525,43 @@ function VisualizeContent() {
                   Execute Java programs in an isolated OpenJDK 25 sandbox with intelligent Mode A (Visual Animation) or Mode B (Step-by-Step Fallback Narrative).
                 </p>
               </div>
-              <Button
-                variant="primary"
-                size="sm"
-                onClick={handleRunJvmTrace}
-                disabled={isJvmLoading}
-                className="bg-indigo-600 hover:bg-indigo-500 text-white font-medium shrink-0"
-              >
-                {isJvmLoading ? (
-                  <RefreshCw className="w-4 h-4 animate-spin mr-1.5" />
-                ) : (
-                  <Play className="w-4 h-4 fill-current mr-1.5" />
-                )}
-                {isJvmLoading ? "Tracing JVM..." : "Generate Execution Trace"}
-              </Button>
+              <div className="flex items-center gap-2 shrink-0">
+                <label className="cursor-pointer">
+                  <input
+                    type="file"
+                    accept=".json"
+                    className="hidden"
+                    onChange={handleFileImport}
+                  />
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="border-zinc-750 hover:bg-zinc-800 text-zinc-300 font-medium"
+                    type="button"
+                    onClick={(e) => {
+                      const input = e.currentTarget.parentElement?.querySelector('input[type="file"]') as HTMLInputElement | null;
+                      input?.click();
+                    }}
+                  >
+                    <Upload className="w-4 h-4 mr-1.5" />
+                    Import Trace
+                  </Button>
+                </label>
+                <Button
+                  variant="primary"
+                  size="sm"
+                  onClick={handleRunJvmTrace}
+                  disabled={isJvmLoading}
+                  className="bg-indigo-600 hover:bg-indigo-500 text-white font-medium"
+                >
+                  {isJvmLoading ? (
+                    <RefreshCw className="w-4 h-4 animate-spin mr-1.5" />
+                  ) : (
+                    <Play className="w-4 h-4 fill-current mr-1.5" />
+                  )}
+                  {isJvmLoading ? "Tracing JVM..." : "Generate Execution Trace"}
+                </Button>
+              </div>
             </div>
 
             {/* Presets Archetypes Carousel / Grid */}
