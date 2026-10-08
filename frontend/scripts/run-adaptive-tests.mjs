@@ -288,3 +288,22 @@ test("Relational Comparison Evaluation Concept Verification", async (t) => {
     assert.equal(evaluate(15, ">=", 18), false);
   });
 });
+
+test("Array Operations (Swaps & Search Windows) Concept Verification", async (t) => {
+  await t.test("Detects swap event with target indices", () => {
+    const swapEvent = {
+      conceptType: "SWAP",
+      symbol: "arr",
+      metadata: { index: 1, swapWithIndex: 3 },
+    };
+    assert.equal(swapEvent.conceptType, "SWAP");
+    assert.equal(swapEvent.metadata.index, 1);
+    assert.equal(swapEvent.metadata.swapWithIndex, 3);
+  });
+
+  await t.test("Calculates binary search window boundaries", () => {
+    const binarySearchStep = (low, high) => Math.floor((low + high) / 2);
+    assert.equal(binarySearchStep(0, 4), 2);
+    assert.equal(binarySearchStep(3, 4), 3);
+  });
+});

@@ -6,6 +6,7 @@ import { resolveVisualizationStrategy } from "@/lib/visualizer/adaptiveStrategy"
 import { buildStepExplanation } from "@/lib/visualizer/explanationBuilder";
 import { VariableConceptRenderer } from "./VariableConceptRenderer";
 import { ArrayConceptRenderer } from "./ArrayConceptRenderer";
+import { ArrayOperationRenderer } from "./ArrayOperationRenderer";
 import { ConditionConceptRenderer } from "./ConditionConceptRenderer";
 import { LoopConceptRenderer } from "./LoopConceptRenderer";
 import { FunctionConceptRenderer } from "./FunctionConceptRenderer";
@@ -70,6 +71,9 @@ export function AdaptiveConceptDispatcher({ event, sourceLines }: AdaptiveConcep
             )}
             {decision.rendererType === "ARRAY" && (
               <ArrayConceptRenderer event={event} />
+            )}
+            {decision.rendererType === "ARRAY_OPERATION" && (
+              <ArrayOperationRenderer event={event} />
             )}
             {decision.rendererType === "CONDITION" && (
               <ConditionConceptRenderer event={event} />

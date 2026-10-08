@@ -146,11 +146,39 @@ export function canVisualizeComparison(event: NormalizedExecutionEvent): boolean
   return false;
 }
 
+export function canVisualizeArrayOperation(event: NormalizedExecutionEvent): boolean {
+  if (
+    event.conceptType === "SWAP" ||
+    event.conceptType === "SEARCH_STEP" ||
+    event.conceptType === "SORT_STEP"
+  ) {
+    return true;
+  }
+  if (event.metadata?.isSwap || event.metadata?.searchTarget !== undefined) {
+    return true;
+  }
+  return false;
+}
+
 // ---------------------------------------------------------------------------
 // Extensible Strategy Handlers Registry
 // ---------------------------------------------------------------------------
 
 const STRATEGY_HANDLERS: ConceptStrategyHandler[] = [
+  {
+    id: "array-operation-handler",
+    rendererType: "ARRAY_OPERATION",
+    priority: 105,
+    match: canVisualizeArrayOperation,
+    evaluate: (event) => ({
+      mode: "VISUAL_EXECUTION",
+      rendererType: "ARRAY_OPERATION",
+      confidence: "FULL",
+      reason: `Array algorithmic operation (${event.conceptType}) executed with cell highlight indicators.`,
+      suggestedDetailLevel: "beginner",
+      conceptType: event.conceptType,
+    }),
+  },
   {
     id: "array-handler",
     rendererType: "ARRAY",

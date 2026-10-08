@@ -269,6 +269,7 @@ export type VisualRendererType =
   | "CONDITION"
   | "LOOP"
   | "ARRAY"
+  | "ARRAY_OPERATION"
   | "CALL_STACK"
   | "RECURSION"
   | "OBJECT"
