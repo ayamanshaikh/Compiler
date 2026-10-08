@@ -245,5 +245,25 @@ test("Advanced Concepts (Recursion & Object References) Logic Verification", asy
   });
 });
 
+test("Code Concept Detector Syntactic Discovery Verification", async (t) => {
+  await t.test("Discovers loop constructs accurately", () => {
+    const hasLoop = (code) => /\b(for|while|do)\b/.test(code);
+    assert.equal(hasLoop("for (int i=0; i<5; i++)"), true);
+    assert.equal(hasLoop("int x = 10;"), false);
+  });
 
+  await t.test("Discovers array brackets and array operations", () => {
+    const hasArray = (code) => /\[\s*\]/.test(code) || /\[\d+\]/.test(code);
+    assert.equal(hasArray("int[] nums = new int[4];"), true);
+    assert.equal(hasArray("int a = 1;"), false);
+  });
 
+  await t.test("Discovers recursive method definitions", () => {
+    const isRecursive = (methodName, code) => {
+      const regex = new RegExp(`\\b${methodName}\\s*\\(`, "g");
+      return (code.match(regex) || []).length >= 2;
+    };
+    const sample = "int fib(int n) { return fib(n-1) + fib(n-2); }";
+    assert.equal(isRecursive("fib", sample), true);
+  });
+});

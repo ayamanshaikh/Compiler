@@ -26,6 +26,7 @@ import {
   analyzeProgramTraceStrategies,
   resolveVisualizationStrategy,
 } from "@/lib/visualizer/adaptiveStrategy";
+import { detectCodeConcepts } from "@/lib/visualizer/codeConceptDetector";
 import { AdaptiveConceptDispatcher } from "@/components/visualizer/concepts/AdaptiveConceptDispatcher";
 import { ExplanationTimeline } from "@/components/visualizer/explanation/ExplanationTimeline";
 
@@ -45,6 +46,11 @@ export function TraceVisualizer({ trace, sourceCode }: TraceVisualizerProps) {
   const steps = useMemo(() => trace.steps || [], [trace.steps]);
   const currentStep: TraceStep | undefined = steps[currentStepIndex];
   const sourceLines = sourceCode.split(/\r?\n/);
+
+  const detectedConcepts = useMemo(
+    () => detectCodeConcepts(sourceCode),
+    [sourceCode]
+  );
 
   const normalizedEvents = useMemo(
     () => steps.map((s) => normalizeTraceStep(s)),
@@ -315,6 +321,25 @@ export function TraceVisualizer({ trace, sourceCode }: TraceVisualizerProps) {
           <span className="text-xs text-accent ml-auto font-mono">
             Line {currentStep.line}
           </span>
+        </div>
+      )}
+
+      {/* Detected Code Concepts Rail */}
+      {detectedConcepts.length > 0 && (
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 text-[11px] font-mono">
+          <span className="text-zinc-500 uppercase tracking-wider text-[10px] shrink-0 font-semibold">
+            Detected Concepts:
+          </span>
+          {detectedConcepts.map((c) => (
+            <span
+              key={c.id}
+              title={c.description}
+              className="px-2 py-0.5 rounded-md bg-zinc-900 border border-zinc-800 text-zinc-300 text-[10px] whitespace-nowrap flex items-center gap-1"
+            >
+              <span className="w-1.5 h-1.5 rounded-full bg-accent inline-block" />
+              <span>{c.badge}</span>
+            </span>
+          ))}
         </div>
       )}
 
