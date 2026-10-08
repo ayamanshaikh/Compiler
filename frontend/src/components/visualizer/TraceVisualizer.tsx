@@ -16,6 +16,7 @@ import {
   FastForward,
   Rewind,
   Keyboard,
+  Download,
 } from "lucide-react";
 import { TraceResponsePayload, TraceStep } from "@/lib/api/types";
 import { Button } from "@/components/ui/Button";
@@ -29,6 +30,7 @@ import {
 } from "@/lib/visualizer/adaptiveStrategy";
 import { detectCodeConcepts } from "@/lib/visualizer/codeConceptDetector";
 import { useTraceKeyboardShortcuts } from "@/lib/visualizer/useTraceKeyboardShortcuts";
+import { downloadTraceFile } from "@/lib/visualizer/traceExport";
 import { TraceShortcutsModal } from "./TraceShortcutsModal";
 import { AdaptiveConceptDispatcher } from "@/components/visualizer/concepts/AdaptiveConceptDispatcher";
 import { ExplanationTimeline } from "@/components/visualizer/explanation/ExplanationTimeline";
@@ -313,6 +315,14 @@ export function TraceVisualizer({ trace, sourceCode }: TraceVisualizerProps) {
             title="Keyboard Shortcuts Guide (?)"
           >
             <Keyboard className="w-3.5 h-3.5" />
+          </button>
+          <button
+            type="button"
+            onClick={() => downloadTraceFile(trace, sourceCode)}
+            className="p-1.5 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800 rounded transition-colors cursor-pointer"
+            title="Export Trace Session (.json)"
+          >
+            <Download className="w-3.5 h-3.5" />
           </button>
         </div>
       </Card>

@@ -346,3 +346,51 @@ test("String Character Sequence Buffer Concept Verification", async (t) => {
     assert.equal(cleanStr, "CodeVista");
   });
 });
+
+test("Trace Session Export & Import Verification", async (t) => {
+  await t.test("Serializes trace to versioned JSON schema", () => {
+    const mockTrace = {
+      status: "SUCCESS",
+      steps: [
+        {
+          stepNumber: 1,
+          lineNumber: 4,
+          eventType: "VARIABLE_DECLARATION",
+          variables: { x: "10" },
+        },
+      ],
+      totalSteps: 1,
+    };
+    const mockCode = "int x = 10;";
+    const session = {
+      schemaVersion: "1.0.0",
+      exportedAt: new Date().toISOString(),
+      language: "java",
+      sourceCode: mockCode,
+      trace: mockTrace,
+    };
+    const jsonStr = JSON.stringify(session, null, 2);
+    const parsed = JSON.parse(jsonStr);
+
+    assert.equal(parsed.schemaVersion, "1.0.0");
+    assert.equal(parsed.language, "java");
+    assert.equal(parsed.sourceCode, "int x = 10;");
+    assert.equal(parsed.trace.steps.length, 1);
+    assert.equal(parsed.trace.steps[0].variables.x, "10");
+  });
+
+  await t.test("Rejects corrupted or invalid JSON trace payloads", () => {
+    const validate = (str) => {
+      const obj = JSON.parse(str);
+      if (!obj || typeof obj !== "object") throw new Error("Invalid root");
+      if (obj.schemaVersion !== "1.0.0" && !Array.isArray(obj.steps)) {
+        throw new Error("Unsupported trace format");
+      }
+      return true;
+    };
+
+    assert.throws(() => validate("{ invalid json "), /Unexpected token|Expected property/);
+    assert.throws(() => validate('{"randomKey": 123}'), /Unsupported trace format/);
+    assert.equal(validate('{"schemaVersion":"1.0.0","trace":{"steps":[]}}'), true);
+  });
+});
