@@ -47,6 +47,22 @@ export function canVisualizeMatrix2D(event: NormalizedExecutionEvent): boolean {
   return has2DHeapKey;
 }
 
+export function canVisualizeCollection(event: NormalizedExecutionEvent): boolean {
+  if (event.conceptType === "COLLECTION_OPERATION") return true;
+  if (
+    event.metadata?.isCollection === true ||
+    event.metadata?.collectionType !== undefined ||
+    Array.isArray(event.metadata?.items) ||
+    Array.isArray(event.metadata?.elements)
+  ) {
+    return true;
+  }
+  if (event.operation && /LIST_|COLLECTION_|ARRAYLIST_/i.test(event.operation)) {
+    return true;
+  }
+  return false;
+}
+
 export function canVisualizeArray(event: NormalizedExecutionEvent): boolean {
   if (event.conceptType === "ARRAY_MUTATION" || event.conceptType === "ARRAY_ACCESS") {
     return true;
@@ -227,6 +243,20 @@ const STRATEGY_HANDLERS: ConceptStrategyHandler[] = [
       rendererType: "ARRAY_OPERATION",
       confidence: "FULL",
       reason: `Array algorithmic operation (${event.conceptType}) executed with cell highlight indicators.`,
+      suggestedDetailLevel: "beginner",
+      conceptType: event.conceptType,
+    }),
+  },
+  {
+    id: "collection-handler",
+    rendererType: "COLLECTION",
+    priority: 104,
+    match: canVisualizeCollection,
+    evaluate: (event) => ({
+      mode: "VISUAL_EXECUTION",
+      rendererType: "COLLECTION",
+      confidence: "FULL",
+      reason: `Dynamic collection operation (${event.conceptType}) executed with element buffer update.`,
       suggestedDetailLevel: "beginner",
       conceptType: event.conceptType,
     }),

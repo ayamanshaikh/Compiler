@@ -273,6 +273,7 @@ export type VisualRendererType =
   | "ARRAY"
   | "ARRAY_OPERATION"
   | "MATRIX_2D"
+  | "COLLECTION"
   | "STRING_OPERATION"
   | "CALL_STACK"
   | "PARAMETER_BIND"

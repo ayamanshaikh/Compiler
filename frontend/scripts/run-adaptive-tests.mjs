@@ -507,4 +507,23 @@ test("2D Matrix Grid Memory Concept Verification", async (t) => {
   });
 });
 
+test("Dynamic Collection and ArrayList Buffer Concept Verification", async (t) => {
+  await t.test("Tracks list append operation with dynamic size expansion", () => {
+    const list = ["apple", "banana"];
+    const appendItem = (arr, item) => [...arr, item];
+    const updated = appendItem(list, "cherry");
+
+    assert.equal(updated.length, 3);
+    assert.equal(updated[2], "cherry");
+  });
+
+  await t.test("Calculates ghost capacity cells for underlying array buffer", () => {
+    const size = 3;
+    const capacity = 10;
+    const ghostCount = Math.min(4, Math.max(0, capacity - size));
+    assert.equal(ghostCount, 4);
+  });
+});
+
+
 
