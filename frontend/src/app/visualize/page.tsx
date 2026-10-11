@@ -23,6 +23,11 @@ import { FALLBACK_ALGORITHMS } from "@/lib/data/algorithmData";
 import { parseImportedTrace } from "@/lib/visualizer/traceExport";
 import { decodeSharedTrace } from "@/lib/visualizer/traceUrlSharing";
 import {
+  saveTraceToHistory,
+  TraceHistoryEntry,
+} from "@/lib/visualizer/traceHistory";
+import { TraceHistoryModal } from "@/components/visualizer/TraceHistoryModal";
+import {
   Play,
   Sparkles,
   AlertCircle,
@@ -38,6 +43,7 @@ import {
   Workflow,
   CheckCircle2,
   Upload,
+  History,
 } from "lucide-react";
 
 export interface TracePreset {
@@ -349,6 +355,14 @@ function VisualizeContent() {
   const [isJvmLoading, setIsJvmLoading] = useState<boolean>(false);
   const [jvmTrace, setJvmTrace] = useState<TraceResponsePayload | null>(null);
   const [jvmError, setJvmError] = useState<string | null>(null);
+  const [isHistoryModalOpen, setIsHistoryModalOpen] = useState<boolean>(false);
+
+  const handleRestoreFromHistory = (entry: TraceHistoryEntry) => {
+    setSourceCode(entry.sourceCode);
+    setJvmTrace(entry.trace);
+    setSelectedPresetId("");
+    setJvmError(null);
+  };
 
   // Listen to hashchange events for dynamic URL updates
   useEffect(() => {
@@ -451,6 +465,7 @@ function VisualizeContent() {
         setJvmTrace(parsed.trace);
         setSelectedPresetId("");
         setJvmError(null);
+        saveTraceToHistory(parsed.trace, parsed.sourceCode);
       } catch (err: unknown) {
         setJvmError(
           err instanceof Error
@@ -482,6 +497,7 @@ function VisualizeContent() {
         setJvmTrace(null);
       } else {
         setJvmTrace(response);
+        saveTraceToHistory(response, sourceCode);
       }
     } catch (err: unknown) {
       setJvmError(
@@ -682,6 +698,16 @@ function VisualizeContent() {
                   </Button>
                 </label>
                 <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setIsHistoryModalOpen(true)}
+                  className="border-zinc-750 hover:bg-zinc-800 text-zinc-300 font-medium cursor-pointer"
+                  title="View previous execution traces and compare performance"
+                >
+                  <History className="w-4 h-4 mr-1.5 text-accent" />
+                  History
+                </Button>
+                <Button
                   variant="primary"
                   size="sm"
                   onClick={handleRunJvmTrace}
@@ -866,6 +892,14 @@ function VisualizeContent() {
               </div>
             )}
           </div>
+        )}
+        {/* Trace History & Comparison Modal */}
+        {isHistoryModalOpen && (
+          <TraceHistoryModal
+            isOpen={isHistoryModalOpen}
+            onClose={() => setIsHistoryModalOpen(false)}
+            onSelectTrace={handleRestoreFromHistory}
+          />
         )}
       </PageContainer>
     </AppShell>

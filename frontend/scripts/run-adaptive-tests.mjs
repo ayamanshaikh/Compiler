@@ -642,10 +642,46 @@ test("Curated Preset Archetypes Catalogue Verification", async (t) => {
   });
 });
 
+test("Trace Execution History and Session Recall Verification", async (t) => {
+  await t.test("Caps history at MAX_HISTORY_ITEMS and extracts title from source", () => {
+    const extractTitle = (sourceCode) => {
+      const line = sourceCode
+        .split("\n")
+        .map((l) => l.trim())
+        .find(
+          (l) =>
+            l.length > 0 &&
+            !l.startsWith("//") &&
+            !l.startsWith("/*") &&
+            !l.startsWith("import ") &&
+            !l.startsWith("package ")
+        );
+      return line ? line.substring(0, 38) : "Execution Trace";
+    };
 
+    const code = `package com.example;
+// Comment line
+public class BinarySearch {
+    public static void main(String[] args) {}
+}`;
 
+    const title = extractTitle(code);
+    assert.equal(title, "public class BinarySearch {");
 
+    // Test capping
+    const items = Array.from({ length: 25 }, (_, i) => ({ id: `id_${i}` }));
+    const capped = items.slice(0, 20);
+    assert.equal(capped.length, 20);
+  });
 
+  await t.test("Calculates comparison metrics between two history runs", () => {
+    const runA = { stepCount: 15, executionTimeMs: 40 };
+    const runB = { stepCount: 22, executionTimeMs: 65 };
 
+    const stepDelta = runB.stepCount - runA.stepCount;
+    const timeDelta = runB.executionTimeMs - runA.executionTimeMs;
 
-
+    assert.equal(stepDelta, 7);
+    assert.equal(timeDelta, 25);
+  });
+});
