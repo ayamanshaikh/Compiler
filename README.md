@@ -15,9 +15,11 @@ CodeVista AI is an interactive, visual, Java-first educational programming platf
 
 ## Key Capabilities
 
+- **Adaptive Code Visualization & Explanation Engine**: Dynamic dual-mode architecture featuring 14 concept renderers (Mode A: Visual Execution) and a 7-part pedagogical narrative fallback (Mode B) for authentic code comprehension without fabricated states.
 - **Java-First Compilation & Diagnostics**: Real-time compilation with beginner-friendly diagnostic intelligence, automated error explanations, and code fix suggestions.
 - **Interactive JVM Execution Tracing**: Granular step-by-step tracing of runtime variables, call stack frames, object references, and heap mutations.
-- **Algorithm & Data Structure Visualizer**: Dynamic visual representation of sorting algorithms, searching, recursion, binary trees, and graph traversals.
+- **Algorithm & Data Structure Visualizer**: Dynamic visual representation of sorting algorithms, searching, recursion, binary trees, 2D matrices, and dynamic collections.
+- **Session Export & Replay Sharing**: Schema-versioned offline JSON trace exports and instant zero-server URL hash state sharing (`#share=...`).
 - **Structured Curriculum**: Progressive learning paths covering Java Fundamentals, Object-Oriented Programming, Collections, Concurrency, JDBC, and Spring Framework.
 - **Hands-on Practice & Challenges**: Curated coding challenges with multi-test validation, expected vs. actual output diffs, and instant feedback.
 - **Student Profile & Preferences**: Sync customizable accent themes (`emerald`, `cyan`, `indigo`, `rose`, `amber`), animation speeds, and editor density settings.
@@ -35,13 +37,15 @@ Compiler/
 │   └── workflows/
 │       └── ci.yml               # GitHub Actions CI automated pipeline
 ├── backend/
-│   ├── src/                     # Spring Boot 4 source & tests (161 automated tests)
+│   ├── src/                     # Spring Boot 4 source & tests (164 automated tests)
 │   ├── pom.xml                  # Maven configuration with JDK 25 LTS
 │   └── Dockerfile               # Multi-stage container runtime with Temurin JDK 25
 ├── frontend/
 │   ├── src/                     # Next.js 16 App Router UI, components & hooks
-│   ├── package.json             # React 19, Tailwind CSS, Monaco Editor
+│   ├── package.json             # React 19, Tailwind CSS, Monaco Editor (82 tests)
 │   └── Dockerfile               # Multi-stage standalone Alpine container
+├── docs/
+│   └── VISUALIZER_GUIDE.md      # Adaptive visualizer manual & concept spec
 ├── docker-compose.yml           # Production multi-container orchestration
 ├── docker-compose.dev.yml       # Local development compose override
 ├── ARCHITECTURE.md              # Technical architecture and architectural diagrams

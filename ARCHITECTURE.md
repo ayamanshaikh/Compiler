@@ -183,3 +183,51 @@ Execution steps map to canonical conceptual categories:
 - **Detailed Mode**: Memory scope, call stack hierarchy, evaluation semantics, and runtime reasoning.
 - **Trace Boundaries**: Hard step limits (up to 1,000 steps), timeline summarization, and zero-overhead backward/forward state restoration derived directly from snapshots.
 
+### 6.5 The 14-Concept Priority Decision Matrix
+The Adaptive Strategy Engine (`adaptiveStrategy.ts`) resolves every execution step through a prioritized decision matrix:
+
+| Priority | Renderer Type | Target Trigger / Condition | Mode |
+|:---:|:---|:---|:---:|
+| **120** | `EXCEPTION` | `EXCEPTION_THROWN` / `EXCEPTION_CAUGHT` event or runtime exception metadata | Visual Execution |
+| **110** | `MATRIX_2D` | Multi-dimensional array access or heap coordinates `[r][c]` | Visual Execution |
+| **105** | `ARRAY_OPERATION` | Swaps, binary search interval boundaries `[low..mid..high]`, sorting steps | Visual Execution |
+| **104** | `COLLECTION` | Dynamic lists, `ArrayList`, buffer additions | Visual Execution |
+| **100** | `ARRAY` | 1D array mutations `arr[i] = val` or indexed read | Visual Execution |
+| **92** | `COMPARISON` | Relational binary comparisons (`<`, `<=`, `>`, `>=`, `==`, `!=`) | Visual Execution |
+| **90** | `CONDITION` | If / Else-if / Else branch test result | Visual Execution |
+| **85** | `RECURSION` | Deep call stack frames or recursive self-invocation | Visual Execution |
+| **80** | `LOOP` | `LOOP_ITERATION` events and iteration counters | Visual Execution |
+| **78** | `STRING_OPERATION` | String immutability, character sequence indexing | Visual Execution |
+| **72** | `PARAMETER_BIND` | Function call argument binding and return value bubbling | Visual Execution |
+| **70** | `OBJECT` | Reference instantiation, constructor calls, field maps | Visual Execution |
+| **60** | `EXPRESSION` | Arithmetic operations (`a + b`, `x * y`) | Visual Execution |
+| **50** | `VARIABLE` | Scalar variable declaration and reassignment | Visual Execution |
+| **0** | `EXPLANATION_FALLBACK` | Non-visual or complex setup lines | Step-by-Step Explanation |
+
+### 6.6 State Delta Diff Calculation Architecture
+The State Diff Inspector calculates the delta between adjacent execution steps $t-1$ and $t$:
+- **Added Variables**: Keys present in $t$ but absent in $t-1$.
+- **Modified Variables**: Keys present in both steps whose serial string values differ.
+- **Removed Variables**: Keys present in $t-1$ that dropped out of scope in $t$.
+
+### 6.7 Offline Session Serialization & URL Hash Sharing
+- **Schema-Versioned Export (`traceExport.ts`)**: Generates standalone JSON files compliant with schema `trace-schema-v1`.
+- **Drag-and-Drop Replay**: The frontend parses, validates, and hydrates offline sessions instantly.
+- **Base64 Hash Fragments (`#share=...`)**: Direct browser URLs encode code and step cursor without requiring server storage.
+
+### 6.8 Screen Reader & Assistive Technology Architecture
+- **ARIA Live Region (`TraceAriaLiveAnnouncer.tsx`)**: Politeness mode ensures non-intrusive vocalization of variable values and branch outcomes.
+- **Interactive Keyboard Navigation**: High-efficiency hardware hotkeys (`Space`, `Arrows`, `Home`, `End`, `B`, `L`, `?`).
+
+---
+
+## 7. Quality Assurance & Verification Architecture
+
+CodeVista AI maintains a strict zero-regression policy across both frontend and backend layers:
+
+- **Frontend Unit & E2E Test Suite**: 82 automated test specs running natively via `node --test` with sub-100ms execution times.
+- **TypeScript Static Verification**: Strict `tsc --noEmit` configuration with zero type errors.
+- **ESLint Quality Verification**: Enforces zero warnings and zero errors across all React 19 components and hooks.
+- **Backend Test Suite**: 164 Spring Boot integration and unit tests covering compiler, security, sandboxing, and trace collectors.
+
+
