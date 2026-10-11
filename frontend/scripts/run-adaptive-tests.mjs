@@ -577,6 +577,31 @@ test("Execution Step State Delta Diff Calculation Verification", async (t) => {
   });
 });
 
+test("Playback Loop Mode and Variable Speed Calculation Verification", async (t) => {
+  await t.test("Handles wrap-around when looping reaches end of trace", () => {
+    const totalSteps = 10;
+    const getNextStep = (current, isLooping) => {
+      if (current < totalSteps - 1) return current + 1;
+      return isLooping ? 0 : current;
+    };
+
+    assert.equal(getNextStep(4, false), 5);
+    assert.equal(getNextStep(9, false), 9);
+    assert.equal(getNextStep(9, true), 0);
+  });
+
+  await t.test("Calculates correct timer interval from speed multiplier", () => {
+    const baseSpeed = 600;
+    const getInterval = (multiplier) => Math.round(baseSpeed / multiplier);
+
+    assert.equal(getInterval(1), 600);
+    assert.equal(getInterval(2), 300);
+    assert.equal(getInterval(0.5), 1200);
+    assert.equal(getInterval(5), 120);
+  });
+});
+
+
 
 
 

@@ -13,6 +13,7 @@ export interface TraceKeyboardHandlers {
   onToggleViewMode: () => void;
   onToggleHelp: () => void;
   onToggleBookmark?: () => void;
+  onToggleLoop?: () => void;
 }
 
 export function useTraceKeyboardShortcuts(
@@ -72,6 +73,10 @@ export function useTraceKeyboardShortcuts(
         case "KeyB":
           e.preventDefault();
           handlers.onToggleBookmark?.();
+          break;
+        case "KeyL":
+          e.preventDefault();
+          handlers.onToggleLoop?.();
           break;
         case "Slash":
           if (e.shiftKey) {

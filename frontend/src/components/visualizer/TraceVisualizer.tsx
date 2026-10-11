@@ -22,6 +22,7 @@ import {
   Bookmark,
   BookmarkCheck,
   SlidersHorizontal,
+  Repeat,
 } from "lucide-react";
 import { TraceResponsePayload, TraceStep } from "@/lib/api/types";
 import { Button } from "@/components/ui/Button";
@@ -84,6 +85,7 @@ export function TraceVisualizer({ trace, sourceCode }: TraceVisualizerProps) {
     preferences?.visualDensity === "compact" ? "compact" : "comfortable"
   );
   const [isHighContrast, setIsHighContrast] = useState<boolean>(false);
+  const [isLooping, setIsLooping] = useState<boolean>(false);
   const baseSpeed = preferences?.visualizerSpeed || 600;
   const isCompact = visualDensity === "compact";
   const detailLevel = preferences?.visualizationDetail || "standard";
@@ -96,6 +98,8 @@ export function TraceVisualizer({ trace, sourceCode }: TraceVisualizerProps) {
         setCurrentStepIndex((prev) => {
           if (prev < steps.length - 1) {
             return prev + 1;
+          } else if (isLooping) {
+            return 0; // Wrap around to first step
           } else {
             setIsPlaying(false);
             return prev;
@@ -110,7 +114,7 @@ export function TraceVisualizer({ trace, sourceCode }: TraceVisualizerProps) {
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
     };
-  }, [isPlaying, speedMultiplier, steps.length, baseSpeed]);
+  }, [isPlaying, speedMultiplier, steps.length, baseSpeed, isLooping]);
 
   const handleStepForward = () => {
     setIsPlaying(false);
@@ -204,6 +208,7 @@ export function TraceVisualizer({ trace, sourceCode }: TraceVisualizerProps) {
       setViewMode((v) => (v === "visual" ? "narrative" : "visual")),
     onToggleHelp: () => setIsShortcutsOpen((o) => !o),
     onToggleBookmark: () => toggleBookmark(currentStepIndex),
+    onToggleLoop: () => setIsLooping((l) => !l),
   });
 
   if (steps.length === 0) {
@@ -289,6 +294,19 @@ export function TraceVisualizer({ trace, sourceCode }: TraceVisualizerProps) {
           >
             <FastForward className="w-3.5 h-3.5" />
           </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setIsLooping(!isLooping)}
+            className={`cursor-pointer ${
+              isLooping
+                ? "text-accent bg-accent/15 border border-accent/40 font-bold"
+                : "text-zinc-400 hover:text-zinc-200"
+            }`}
+            title={isLooping ? "Disable Continuous Loop (L)" : "Enable Continuous Loop (L)"}
+          >
+            <Repeat className="w-3.5 h-3.5" />
+          </Button>
         </div>
 
         {/* Scrubber & Step Info */}
@@ -311,11 +329,11 @@ export function TraceVisualizer({ trace, sourceCode }: TraceVisualizerProps) {
 
         {/* Speed Multiplier */}
         <div className="flex items-center gap-1">
-          {[0.5, 1, 2].map((s) => (
+          {[0.25, 0.5, 1, 2, 5].map((s) => (
             <button
               key={s}
               onClick={() => setSpeedMultiplier(s)}
-              className={`px-2 py-1 text-xs rounded font-mono transition-colors ${
+              className={`px-1.5 py-1 text-xs rounded font-mono transition-colors cursor-pointer ${
                 speedMultiplier === s
                   ? "bg-accent/20 text-accent border border-accent/40 font-semibold"
                   : "text-zinc-400 hover:bg-zinc-800"
