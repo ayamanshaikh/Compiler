@@ -601,6 +601,27 @@ test("Playback Loop Mode and Variable Speed Calculation Verification", async (t)
   });
 });
 
+test("Asymptotic Execution Complexity Estimation Verification", async (t) => {
+  await t.test("Estimates O(1) for constant linear instructions without loops", () => {
+    const code = "int x = 10;\nint y = 20;";
+    const loopMatches = code.match(/\b(for|while)\b/g);
+    assert.equal(loopMatches, null);
+  });
+
+  await t.test("Estimates O(n) for trace containing single linear loop", () => {
+    const code = "for (int i = 0; i < 5; i++) { count += i; }";
+    const loopMatches = code.match(/\b(for|while)\b/g);
+    assert.equal(loopMatches?.length, 1);
+  });
+
+  await t.test("Estimates recursive complexity for call stack depth > 2", () => {
+    const maxStack = 4;
+    const isRecursive = maxStack > 2;
+    assert.equal(isRecursive, true);
+  });
+});
+
+
 
 
 

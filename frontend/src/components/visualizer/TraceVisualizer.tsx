@@ -42,6 +42,7 @@ import { TraceShortcutsModal } from "./TraceShortcutsModal";
 import { TraceAriaLiveAnnouncer } from "./TraceAriaLiveAnnouncer";
 import { AdaptiveConceptDispatcher } from "@/components/visualizer/concepts/AdaptiveConceptDispatcher";
 import { StateDiffInspector } from "./StateDiffInspector";
+import { ComplexityEstimatorCard } from "./ComplexityEstimatorCard";
 import { ExplanationTimeline } from "@/components/visualizer/explanation/ExplanationTimeline";
 
 interface TraceVisualizerProps {
@@ -703,6 +704,9 @@ export function TraceVisualizer({ trace, sourceCode }: TraceVisualizerProps) {
                 {currentStep?.output || "(no output generated yet)"}
               </pre>
             </Card>
+
+            {/* Asymptotic Complexity Profile */}
+            <ComplexityEstimatorCard steps={steps} sourceCode={sourceCode} />
           </div>
         </div>
       ) : (
