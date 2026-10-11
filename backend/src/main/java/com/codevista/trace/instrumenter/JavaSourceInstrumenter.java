@@ -100,8 +100,21 @@ public class JavaSourceInstrumenter {
                     pendingClassScope = false;
                 }
                 outputLines.add(line);
-                if (trimmed.startsWith("for") || trimmed.startsWith("while")) {
-                    outputLines.add("        CodeVistaTraceCollector.line(" + originalLineNum + ", \"Loop body iteration\");");
+                boolean isLoopHeader = trimmed.startsWith("for") || trimmed.startsWith("while") ||
+                        trimmed.contains(" for (") || trimmed.contains(" while (");
+                boolean isIfHeader = trimmed.startsWith("if (") || trimmed.startsWith("if(") ||
+                        trimmed.contains(" if (") || trimmed.contains(" if(");
+                boolean isElseIfHeader = trimmed.startsWith("else if") || trimmed.contains("else if");
+                boolean isElseHeader = !isElseIfHeader && (trimmed.startsWith("else") || trimmed.contains("else {") || trimmed.contains("else{"));
+
+                if (isLoopHeader) {
+                    outputLines.add("        CodeVistaTraceCollector.loopIter(" + originalLineNum + ");");
+                } else if (isElseIfHeader) {
+                    outputLines.add("        CodeVistaTraceCollector.branchEntered(\"else-if\", " + originalLineNum + ");");
+                } else if (isIfHeader) {
+                    outputLines.add("        CodeVistaTraceCollector.branchEntered(\"if\", " + originalLineNum + ");");
+                } else if (isElseHeader) {
+                    outputLines.add("        CodeVistaTraceCollector.branchEntered(\"else\", " + originalLineNum + ");");
                 }
                 continue;
             }

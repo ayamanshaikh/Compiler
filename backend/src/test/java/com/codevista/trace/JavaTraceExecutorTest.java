@@ -232,4 +232,44 @@ class JavaTraceExecutorTest {
         }
         assertThat(foundObject).isTrue();
     }
+
+    @Test
+    @DisplayName("8. Loop iterations and branch decisions record enriched metadata")
+    void testLoopIterationAndBranchOutcomeMetadata() {
+        String code = """
+                public class Main {
+                    public static void main(String[] args) {
+                        int total = 0;
+                        for (int i = 0; i < 3; i++) {
+                            total += i;
+                        }
+                        if (total > 0) {
+                            total = 100;
+                        }
+                    }
+                }
+                """;
+
+        ExecutionTrace trace = executor.trace(new ExecutionRequest(Language.JAVA, code, ""));
+
+        assertThat(trace.isSuccess()).isTrue();
+        boolean foundLoopIter = false;
+        boolean foundBranchEnter = false;
+
+        for (TraceStep step : trace.getSteps()) {
+            if ("LOOP_ITER".equals(step.getOperation())) {
+                assertThat(step.getMetadata()).containsKey("iteration");
+                assertThat(step.getMetadata().get("isLoop")).isEqualTo("true");
+                foundLoopIter = true;
+            }
+            if ("BRANCH_ENTER".equals(step.getOperation())) {
+                assertThat(step.getMetadata().get("branchKind")).isEqualTo("if");
+                assertThat(step.getMetadata().get("outcome")).isEqualTo("TRUE");
+                foundBranchEnter = true;
+            }
+        }
+
+        assertThat(foundLoopIter).isTrue();
+        assertThat(foundBranchEnter).isTrue();
+    }
 }

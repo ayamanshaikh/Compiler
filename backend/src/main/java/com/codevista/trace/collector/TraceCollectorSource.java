@@ -16,6 +16,7 @@ public class CodeVistaTraceCollector {
     private static final List<StepData> steps = new ArrayList<>();
     private static final Map<String, VarData> currentVars = new LinkedHashMap<>();
     private static final Map<String, String> currentHeap = new LinkedHashMap<>();
+    private static final Map<Integer, Integer> loopIterationCounters = new LinkedHashMap<>();
     private static final StringBuilder currentOutput = new StringBuilder();
     private static boolean shutdownHookRegistered = false;
 
@@ -79,6 +80,20 @@ public class CodeVistaTraceCollector {
         s.operation = "BRANCH";
         s.metadata.put("condition", condExpr);
         s.metadata.put("result", String.valueOf(taken));
+        s.metadata.put("branchTaken", String.valueOf(taken));
+        s.metadata.put("outcome", taken ? "TRUE" : "FALSE");
+        recordStep(s);
+    }
+
+    public static synchronized void branchEntered(String branchKind, int line) {
+        if (steps.size() >= MAX_STEPS) return;
+        String desc = "Entered conditional " + branchKind + " branch";
+        StepData s = createStep(line, "CONDITION_EVALUATION", desc);
+        s.operation = "BRANCH_ENTER";
+        s.metadata.put("branchKind", branchKind);
+        s.metadata.put("branchTaken", "true");
+        s.metadata.put("result", "true");
+        s.metadata.put("outcome", "TRUE");
         recordStep(s);
     }
 
@@ -87,7 +102,16 @@ public class CodeVistaTraceCollector {
         StepData s = createStep(line, "LOOP_ITERATION", "Loop iteration " + iter);
         s.operation = "LOOP_ITER";
         s.metadata.put("iteration", String.valueOf(iter));
+        s.metadata.put("iterationIndex", String.valueOf(iter - 1));
+        s.metadata.put("isLoop", "true");
         recordStep(s);
+    }
+
+    public static synchronized void loopIter(int line) {
+        if (steps.size() >= MAX_STEPS) return;
+        int count = loopIterationCounters.getOrDefault(line, 0) + 1;
+        loopIterationCounters.put(line, count);
+        loopIter(line, count);
     }
 
     public static synchronized void print(String text, int line) {
