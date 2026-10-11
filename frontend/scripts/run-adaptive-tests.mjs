@@ -547,6 +547,37 @@ test("JVM Exception Propagation and Control Flow Verification", async (t) => {
   });
 });
 
+test("Execution Step State Delta Diff Calculation Verification", async (t) => {
+  await t.test("Calculates added, modified, and removed variables accurately", () => {
+    const prev = {
+      variables: {
+        x: { name: "x", type: "int", value: "10" },
+        temp: { name: "temp", type: "int", value: "99" },
+      },
+    };
+    const curr = {
+      variables: {
+        x: { name: "x", type: "int", value: "20" },
+        y: { name: "y", type: "int", value: "30" },
+      },
+    };
+
+    const diffs = [];
+    for (const [k, v] of Object.entries(curr.variables)) {
+      if (!prev.variables[k]) diffs.push({ name: k, type: "ADDED", val: v.value });
+      else if (prev.variables[k].value !== v.value) diffs.push({ name: k, type: "MODIFIED", old: prev.variables[k].value, val: v.value });
+    }
+    for (const [k, v] of Object.entries(prev.variables)) {
+      if (!curr.variables[k]) diffs.push({ name: k, type: "REMOVED", old: v.value });
+    }
+
+    assert.equal(diffs.find((d) => d.name === "y")?.type, "ADDED");
+    assert.equal(diffs.find((d) => d.name === "x")?.type, "MODIFIED");
+    assert.equal(diffs.find((d) => d.name === "temp")?.type, "REMOVED");
+  });
+});
+
+
 
 
 

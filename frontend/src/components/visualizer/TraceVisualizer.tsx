@@ -40,6 +40,7 @@ import { encodeSharedTrace } from "@/lib/visualizer/traceUrlSharing";
 import { TraceShortcutsModal } from "./TraceShortcutsModal";
 import { TraceAriaLiveAnnouncer } from "./TraceAriaLiveAnnouncer";
 import { AdaptiveConceptDispatcher } from "@/components/visualizer/concepts/AdaptiveConceptDispatcher";
+import { StateDiffInspector } from "./StateDiffInspector";
 import { ExplanationTimeline } from "@/components/visualizer/explanation/ExplanationTimeline";
 
 interface TraceVisualizerProps {
@@ -584,6 +585,12 @@ export function TraceVisualizer({ trace, sourceCode }: TraceVisualizerProps) {
                 sourceLines={sourceLines}
               />
             )}
+
+            {/* State Delta Inspector */}
+            <StateDiffInspector
+              currentStep={currentStep}
+              previousStep={currentStepIndex > 0 ? steps[currentStepIndex - 1] : undefined}
+            />
 
             {/* Variables Table */}
             <Card className={`bg-zinc-900 border-zinc-800 ${isCompact ? "p-2.5" : "p-3"}`}>
