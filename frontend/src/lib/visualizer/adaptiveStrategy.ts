@@ -33,6 +33,24 @@ export function canVisualizeVariable(event: NormalizedExecutionEvent): boolean {
   return Boolean(event.symbol && event.currentValue !== undefined && event.currentValue !== null);
 }
 
+export function canVisualizeException(event: NormalizedExecutionEvent): boolean {
+  if (
+    event.conceptType === "EXCEPTION" ||
+    event.eventType === "EXCEPTION_THROWN" ||
+    event.eventType === "EXCEPTION_CAUGHT"
+  ) {
+    return true;
+  }
+  if (
+    event.metadata?.exceptionType ||
+    event.metadata?.exceptionClass ||
+    (event.currentValue && event.currentValue.includes("Exception"))
+  ) {
+    return true;
+  }
+  return false;
+}
+
 export function canVisualizeMatrix2D(event: NormalizedExecutionEvent): boolean {
   if (event.conceptType === "MATRIX_2D") return true;
   if (
@@ -219,6 +237,20 @@ export function canVisualizeString(event: NormalizedExecutionEvent): boolean {
 // ---------------------------------------------------------------------------
 
 const STRATEGY_HANDLERS: ConceptStrategyHandler[] = [
+  {
+    id: "exception-handler",
+    rendererType: "EXCEPTION",
+    priority: 120,
+    match: canVisualizeException,
+    evaluate: (event) => ({
+      mode: "VISUAL_EXECUTION",
+      rendererType: "EXCEPTION",
+      confidence: "FULL",
+      reason: `JVM exception propagation detected (${event.conceptType}) with control flow unwinding.`,
+      suggestedDetailLevel: "beginner",
+      conceptType: event.conceptType,
+    }),
+  },
   {
     id: "matrix-2d-handler",
     rendererType: "MATRIX_2D",

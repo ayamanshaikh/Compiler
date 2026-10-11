@@ -280,6 +280,7 @@ export type VisualRendererType =
   | "RECURSION"
   | "OBJECT"
   | "OUTPUT"
+  | "EXCEPTION"
   | "GENERIC_VISUAL"
   | "NONE";
 

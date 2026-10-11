@@ -19,6 +19,7 @@ import { StringConceptRenderer } from "./StringConceptRenderer";
 import { ComparisonConceptRenderer } from "./ComparisonConceptRenderer";
 import { RecursionConceptRenderer } from "./RecursionConceptRenderer";
 import { ObjectConceptRenderer } from "./ObjectConceptRenderer";
+import { ExceptionConceptRenderer } from "./ExceptionConceptRenderer";
 import { StepExplanationCard } from "../explanation/StepExplanationCard";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
@@ -114,6 +115,9 @@ export function AdaptiveConceptDispatcher({ event, sourceLines }: AdaptiveConcep
             )}
             {decision.rendererType === "OUTPUT" && (
               <OutputConceptRenderer event={event} />
+            )}
+            {decision.rendererType === "EXCEPTION" && (
+              <ExceptionConceptRenderer event={event} />
             )}
             {decision.rendererType === "NONE" && (
               <VariableConceptRenderer event={event} />

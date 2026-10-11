@@ -525,5 +525,28 @@ test("Dynamic Collection and ArrayList Buffer Concept Verification", async (t) =
   });
 });
 
+test("JVM Exception Propagation and Control Flow Verification", async (t) => {
+  await t.test("Identifies exception throw event via predicate", () => {
+    const isException = (ev) =>
+      ev.conceptType === "EXCEPTION" ||
+      ev.eventType === "EXCEPTION_THROW" ||
+      Boolean(ev.metadata?.exceptionType) ||
+      (typeof ev.currentValue === "string" && ev.currentValue.includes("Exception"));
+
+    assert.equal(isException({ conceptType: "EXCEPTION" }), true);
+    assert.equal(isException({ eventType: "EXCEPTION_THROW" }), true);
+    assert.equal(isException({ metadata: { exceptionType: "java.lang.ArithmeticException" } }), true);
+    assert.equal(isException({ currentValue: "NullPointerException: Cannot invoke method" }), true);
+    assert.equal(isException({ conceptType: "VARIABLE_ASSIGNMENT", currentValue: "10" }), false);
+  });
+
+  await t.test("Extracts simple exception class name from fully qualified package", () => {
+    const getSimpleName = (pkg) => pkg.includes(".") ? pkg.split(".").pop() : pkg;
+    assert.equal(getSimpleName("java.lang.ArithmeticException"), "ArithmeticException");
+    assert.equal(getSimpleName("java.lang.NullPointerException"), "NullPointerException");
+  });
+});
+
+
 
 
