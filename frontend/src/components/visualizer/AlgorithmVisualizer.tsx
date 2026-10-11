@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
+import NextLink from "next/link";
 import {
   AlgorithmMetadata,
   AlgorithmStep,
@@ -22,6 +23,7 @@ import {
   Sliders,
   Shuffle,
   Bookmark,
+  Layers,
 } from "lucide-react";
 import { useAuth } from "@/lib/context/AuthContext";
 
@@ -144,6 +146,11 @@ export function AlgorithmVisualizer({
   }, [isPlaying, playbackSpeed, trace.steps.length]);
 
   const currentStep: AlgorithmStep | undefined = trace.steps[currentStepIdx];
+  const activeActionType = currentStep?.highlights
+    ? (Object.values(currentStep.highlights).find(
+        (h) => h === "SWAPPING" || h === "COMPARING" || h === "FOUND" || h === "PIVOT"
+      ) as HighlightType | undefined)
+    : undefined;
   const maxVal = Math.max(
     10,
     ...(currentStep?.arrayState && currentStep.arrayState.length > 0
@@ -265,9 +272,31 @@ export function AlgorithmVisualizer({
               </div>
               <div className="flex-1">
                 <div className="flex items-center justify-between mb-1">
-                  <span className="text-[11px] font-mono text-zinc-400">
-                    Step {currentStepIdx + 1} of {trace.steps.length}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[11px] font-mono text-zinc-400">
+                      Step {currentStepIdx + 1} of {trace.steps.length}
+                    </span>
+                    {activeActionType === "SWAPPING" && (
+                      <span className="px-1.5 py-0.5 rounded text-[10px] font-mono bg-rose-500/20 text-rose-300 border border-rose-500/30">
+                        Swap Phase
+                      </span>
+                    )}
+                    {activeActionType === "COMPARING" && (
+                      <span className="px-1.5 py-0.5 rounded text-[10px] font-mono bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                        Comparing Elements
+                      </span>
+                    )}
+                    {activeActionType === "FOUND" && (
+                      <span className="px-1.5 py-0.5 rounded text-[10px] font-mono bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                        Target Match
+                      </span>
+                    )}
+                    {activeActionType === "PIVOT" && (
+                      <span className="px-1.5 py-0.5 rounded text-[10px] font-mono bg-purple-500/20 text-purple-300 border border-purple-500/30">
+                        Pivot Partition
+                      </span>
+                    )}
+                  </div>
                   <span className="text-[11px] font-mono text-indigo-400 font-medium">
                     Line {currentStep?.line ?? "—"}
                   </span>
@@ -520,9 +549,26 @@ export function AlgorithmVisualizer({
                 <Code2 className="w-3.5 h-3.5 text-indigo-400" />
                 <span>Canonical Java Implementation</span>
               </div>
-              <span className="text-[11px] font-mono text-zinc-400">
-                Active Line Sync
-              </span>
+              <div className="flex items-center gap-2">
+                <NextLink
+                  href="/visualize?mode=trace"
+                  onClick={() => {
+                    try {
+                      sessionStorage.setItem("codevista_trace_source", algorithm.javaCode);
+                    } catch {
+                      // ignore storage error
+                    }
+                  }}
+                  className="text-[11px] font-mono text-purple-400 hover:text-purple-300 flex items-center gap-1 transition-colors px-2 py-0.5 rounded bg-purple-950/30 border border-purple-800/40"
+                  title="Trace algorithm step-by-step with child JVM variables"
+                >
+                  <Layers className="w-3 h-3 text-purple-400" />
+                  <span>Trace in JVM</span>
+                </NextLink>
+                <span className="text-[11px] font-mono text-zinc-400">
+                  Active Line Sync
+                </span>
+              </div>
             </div>
 
             {/* Monospace Code Listing with Real-Time Line Highlights */}

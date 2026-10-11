@@ -40,6 +40,7 @@ import {
   Send,
   Zap,
   RefreshCw,
+  Layers,
 } from "lucide-react";
 
 const QUESTION_TYPE_LABELS: Record<QuestionType, { label: string; color: string }> = {
@@ -576,7 +577,24 @@ function PracticeContent() {
                           <Code2 className="w-3.5 h-3.5 text-zinc-400" />
                           Code Reference
                         </span>
-                        <span>Java Source</span>
+                        <div className="flex items-center gap-3">
+                          <NextLink
+                            href="/visualize?mode=trace"
+                            onClick={() => {
+                              try {
+                                sessionStorage.setItem("codevista_trace_source", activeQuestion.codeSnippet || "");
+                              } catch {
+                                // Ignore storage error
+                              }
+                            }}
+                            className="text-xs font-mono text-purple-400 hover:text-purple-300 flex items-center gap-1 transition-colors"
+                            title="Trace this code in the step-by-step visualizer"
+                          >
+                            <Layers className="w-3 h-3 text-purple-400" />
+                            <span>Visualize Execution</span>
+                          </NextLink>
+                          <span>Java Source</span>
+                        </div>
                       </div>
                       <div className="p-4 rounded-xl bg-zinc-950 border border-zinc-800/90 font-mono text-xs text-zinc-200 overflow-x-auto whitespace-pre leading-relaxed">
                         {activeQuestion.codeSnippet}
@@ -649,17 +667,34 @@ function PracticeContent() {
                             <Terminal className="w-3.5 h-3.5 text-indigo-400" />
                             Java Editor — OpenJDK 25 Live Execution
                           </span>
-                          {activeQuestion.starterCode && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => setCodeAnswer(activeQuestion.starterCode || "")}
-                              className="text-xs text-zinc-400 hover:text-zinc-200"
+                          <div className="flex items-center gap-2">
+                            <NextLink
+                              href="/visualize?mode=trace"
+                              onClick={() => {
+                                try {
+                                  sessionStorage.setItem("codevista_trace_source", codeAnswer);
+                                } catch {
+                                  // Ignore storage error
+                                }
+                              }}
+                              className="text-xs font-mono text-purple-400 hover:text-purple-300 flex items-center gap-1 transition-colors px-2 py-1 rounded bg-purple-950/30 border border-purple-800/40"
+                              title="Visualize and debug code execution step-by-step"
                             >
-                              <RotateCcw className="w-3 h-3 mr-1" />
-                              Reset to Starter Code
-                            </Button>
-                          )}
+                              <Layers className="w-3 h-3 text-purple-400" />
+                              <span>Trace in Visualizer</span>
+                            </NextLink>
+                            {activeQuestion.starterCode && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setCodeAnswer(activeQuestion.starterCode || "")}
+                                className="text-xs text-zinc-400 hover:text-zinc-200"
+                              >
+                                <RotateCcw className="w-3 h-3 mr-1" />
+                                Reset to Starter Code
+                              </Button>
+                            )}
+                          </div>
                         </div>
                         <div className="relative rounded-xl border border-zinc-800 bg-zinc-950 p-1 focus-within:border-indigo-500 transition-colors">
                           <textarea
@@ -800,7 +835,23 @@ function PracticeContent() {
                       </div>
 
                       {/* Next Question Navigation */}
-                      <div className="mt-4 flex justify-end">
+                      <div className="mt-4 flex items-center justify-between">
+                        {isCodeQuestion(activeQuestion.questionType) ? (
+                          <NextLink
+                            href="/visualize?mode=trace"
+                            onClick={() => {
+                              try {
+                                sessionStorage.setItem("codevista_trace_source", codeAnswer);
+                              } catch {
+                                // Ignore storage error
+                              }
+                            }}
+                            className="text-xs font-mono text-purple-400 hover:text-purple-300 flex items-center gap-1.5 transition-colors px-2.5 py-1.5 rounded-lg bg-purple-950/30 border border-purple-800/40"
+                          >
+                            <Layers className="w-3.5 h-3.5 text-purple-400" />
+                            <span>Debug in Trace Visualizer</span>
+                          </NextLink>
+                        ) : <div />}
                         <Button
                           variant="outline"
                           size="sm"
