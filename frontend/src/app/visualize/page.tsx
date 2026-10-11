@@ -43,7 +43,7 @@ import {
 export interface TracePreset {
   id: string;
   name: string;
-  category: "Variables" | "Loops" | "Arrays" | "Recursion" | "Objects" | "Mixed";
+  category: "Variables" | "Loops" | "Arrays" | "Recursion" | "Objects" | "Strings" | "Matrix" | "Exceptions" | "Mixed";
   badge: string;
   description: string;
   sourceCode: string;
@@ -108,6 +108,106 @@ export const TRACE_PRESETS: TracePreset[] = [
         // Mutate middle element
         numbers[2] = 99;
         System.out.println("Updated index 2 to 99");
+    }
+}`,
+  },
+  {
+    id: "binary-search",
+    name: "Binary Search Window",
+    category: "Arrays",
+    badge: "BINARY SEARCH",
+    description: "Halves search interval dynamically between low, mid, and high pointers.",
+    sourceCode: `public class Main {
+    public static void main(String[] args) {
+        int[] arr = {10, 20, 30, 40, 50, 60, 70};
+        int target = 40;
+        int low = 0;
+        int high = arr.length - 1;
+        int foundIndex = -1;
+
+        while (low <= high) {
+            int mid = (low + high) / 2;
+            if (arr[mid] == target) {
+                foundIndex = mid;
+                break;
+            } else if (arr[mid] < target) {
+                low = mid + 1;
+            } else {
+                high = mid - 1;
+            }
+        }
+        System.out.println("Target found at index: " + foundIndex);
+    }
+}`,
+  },
+  {
+    id: "string-palindrome",
+    name: "String Character Scanner",
+    category: "Strings",
+    badge: "CHAR SEQUENCE",
+    description: "Scans indexed character cells to verify symmetrical palindrome sequences.",
+    sourceCode: `public class Main {
+    public static void main(String[] args) {
+        String word = "radar";
+        int left = 0;
+        int right = word.length() - 1;
+        boolean isPalindrome = true;
+
+        while (left < right) {
+            char lChar = word.charAt(left);
+            char rChar = word.charAt(right);
+            if (lChar != rChar) {
+                isPalindrome = false;
+                break;
+            }
+            left++;
+            right--;
+        }
+        System.out.println("Is 'radar' a palindrome? " + isPalindrome);
+    }
+}`,
+  },
+  {
+    id: "matrix-grid",
+    name: "2D Matrix Coordinates",
+    category: "Matrix",
+    badge: "2D GRID",
+    description: "Populates multi-dimensional matrix cells in row-major order with active crosshairs.",
+    sourceCode: `public class Main {
+    public static void main(String[] args) {
+        int[][] matrix = new int[3][3];
+        int val = 1;
+
+        for (int r = 0; r < 3; r++) {
+            for (int c = 0; c < 3; c++) {
+                matrix[r][c] = val;
+                val++;
+            }
+        }
+        System.out.println("3x3 Matrix successfully populated.");
+    }
+}`,
+  },
+  {
+    id: "exception-handling",
+    name: "Try-Catch Exception Flow",
+    category: "Exceptions",
+    badge: "EXCEPTION",
+    description: "Demonstrates runtime exception throwing, stack unwinding, and catch block recovery.",
+    sourceCode: `public class Main {
+    public static void main(String[] args) {
+        int numerator = 50;
+        int denominator = 0;
+
+        try {
+            System.out.println("Attempting division...");
+            int result = numerator / denominator;
+            System.out.println("Result: " + result);
+        } catch (ArithmeticException e) {
+            System.out.println("Handled division by zero safely!");
+        } finally {
+            System.out.println("Cleanup completed in finally block.");
+        }
     }
 }`,
   },
@@ -610,7 +710,7 @@ function VisualizeContent() {
                 </span>
               </div>
 
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2.5">
                 {TRACE_PRESETS.map((preset) => {
                   const isSelected = selectedPresetId === preset.id;
                   return (

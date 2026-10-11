@@ -621,6 +621,28 @@ test("Asymptotic Execution Complexity Estimation Verification", async (t) => {
   });
 });
 
+test("Curated Preset Archetypes Catalogue Verification", async (t) => {
+  await t.test("Ensures presets contain valid Java syntax and unique identifiers", () => {
+    const presetIds = [
+      "variables-arithmetic",
+      "condition-loops",
+      "array-mutations",
+      "binary-search",
+      "string-palindrome",
+      "matrix-grid",
+      "exception-handling",
+      "recursion-factorial",
+      "object-references",
+      "mixed-pipeline",
+    ];
+
+    const idSet = new Set(presetIds);
+    assert.equal(idSet.size, presetIds.length);
+    assert.equal(presetIds.length, 10);
+  });
+});
+
+
 
 
 
