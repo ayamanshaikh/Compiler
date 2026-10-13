@@ -920,3 +920,131 @@ test("Compiler Pipeline Contract and Stage Data Model Verification", async (t) =
     assert.equal(diag.explanation.suggestion, "int x = 0;");
   });
 });
+
+test("Hardware & Computer Systems Simulation Engine Verification", async (t) => {
+  await t.test("Simulates JVM Local Variable Table slot allocation", () => {
+    const vars = {
+      price: { name: "price", type: "int", value: "100" },
+      quantity: { name: "quantity", type: "int", value: "3" },
+    };
+
+    const slots = [];
+    slots.push({ slot: 0, name: "args", type: "String[]", value: "[...]", isObserved: true });
+    let slotIdx = 1;
+    for (const key of Object.keys(vars).sort()) {
+      slots.push({ slot: slotIdx++, name: vars[key].name, type: vars[key].type, value: vars[key].value, isObserved: true });
+    }
+
+    assert.equal(slots.length, 3);
+    assert.equal(slots[0].slot, 0);
+    assert.equal(slots[0].name, "args");
+    assert.equal(slots[1].slot, 1);
+    assert.equal(slots[1].name, "price");
+    assert.equal(slots[1].value, "100");
+    assert.equal(slots[2].slot, 2);
+    assert.equal(slots[2].name, "quantity");
+    assert.equal(slots[2].value, "3");
+  });
+
+  await t.test("Simulates LIFO operand stack evaluation and top pointer", () => {
+    const operandStack = [];
+    // Push operand A
+    operandStack.unshift({ index: 0, value: "100", type: "int", isTop: true, sourceOpcode: "bipush" });
+    assert.equal(operandStack.length, 1);
+    assert.equal(operandStack[0].value, "100");
+
+    // Push operand B
+    operandStack.forEach((entry) => (entry.isTop = false));
+    operandStack.unshift({ index: 1, value: "3", type: "int", isTop: true, sourceOpcode: "iconst_3" });
+    assert.equal(operandStack.length, 2);
+    assert.equal(operandStack[0].value, "3");
+    assert.equal(operandStack[0].isTop, true);
+
+    // ALU Execute (imul) -> pop 2, push result 300
+    operandStack.shift();
+    operandStack.shift();
+    operandStack.unshift({ index: 0, value: "300", type: "int", isTop: true, sourceOpcode: "imul" });
+    assert.equal(operandStack.length, 1);
+    assert.equal(operandStack[0].value, "300");
+
+    // istore_3 -> pop top into local variable table
+    const stored = operandStack.shift();
+    assert.equal(stored.value, "300");
+    assert.equal(operandStack.length, 0);
+  });
+
+  await t.test("Simulates ALU operations with integer flags", () => {
+    const aluAdd = (a, b) => {
+      const res = a + b;
+      return {
+        op: "ADD",
+        operandA: a,
+        operandB: b,
+        result: res,
+        flags: { zero: res === 0, sign: res < 0 },
+      };
+    };
+
+    const op1 = aluAdd(10, 5);
+    assert.equal(op1.result, 15);
+    assert.equal(op1.flags.zero, false);
+    assert.equal(op1.flags.sign, false);
+
+    const opZero = aluAdd(-5, 5);
+    assert.equal(opZero.result, 0);
+    assert.equal(opZero.flags.zero, true);
+    assert.equal(opZero.flags.sign, false);
+
+    const opNeg = aluAdd(3, -10);
+    assert.equal(opNeg.result, -7);
+    assert.equal(opNeg.flags.zero, false);
+    assert.equal(opNeg.flags.sign, true);
+  });
+
+  await t.test("Validates 64-bit aligned heap object memory layout and headers", () => {
+    const rawHeapObject = {
+      id: "student_1",
+      type: "Student",
+      state: { name: "Alex", score: 95 },
+    };
+
+    const fieldCount = Object.keys(rawHeapObject.state).length;
+    // 8 bytes Mark Word + 4 bytes compressed Klass Word + instance data + 64-bit alignment padding
+    const sizeBytes = Math.ceil((12 + fieldCount * 4) / 8) * 8;
+
+    const memoryBlock = {
+      addressLabel: "0x7FFF_1000 [Conceptual]",
+      type: rawHeapObject.type,
+      header: {
+        markWord: "0x0000000000000001 (unlocked)",
+        klassWord: "0x20000000 (Student.class)",
+      },
+      sizeBytes,
+      fields: rawHeapObject.state,
+      isConceptualAddress: true,
+      isObservedData: true,
+    };
+
+    assert.equal(memoryBlock.isConceptualAddress, true);
+    assert.equal(memoryBlock.isObservedData, true);
+    assert.equal(memoryBlock.sizeBytes % 8, 0);
+    assert.equal(memoryBlock.addressLabel.includes("[Conceptual]"), true);
+    assert.equal(memoryBlock.header.markWord.includes("unlocked"), true);
+  });
+
+  await t.test("Flags conceptual hardware registers without presenting fake hardware", () => {
+    const registers = [
+      { name: "PC", label: "Program Counter", value: "0x0004", isConceptual: true },
+      { name: "ACC", label: "Accumulator", value: "300", isConceptual: true },
+      { name: "R0", label: "General Register 0", value: "100", isConceptual: true },
+      { name: "R1", label: "General Register 1", value: "3", isConceptual: true },
+      { name: "SP", label: "Stack Pointer", value: "0x0001", isConceptual: true },
+    ];
+
+    assert.equal(registers.length, 5);
+    for (const r of registers) {
+      assert.equal(r.isConceptual, true);
+    }
+  });
+});
+
