@@ -141,4 +141,39 @@ describe("Explanation Builder Educational Narrative Verification", () => {
     assert.ok(explanation.result.length > 0);
     assert.strictEqual(explanation.isVisualCapable, false);
   });
+
+  it("provides distinct beginner and detailed mode explanations from the same underlying event", () => {
+    const event: NormalizedExecutionEvent = {
+      sequence: 1,
+      eventType: "VARIABLE_DECLARATION",
+      conceptType: "VARIABLE_DECLARATION",
+      sourceLine: 3,
+      scope: "main",
+      symbol: "price",
+      currentValue: "100",
+      description: "Declared variable price = 100",
+      metadata: { type: "int" },
+      variables: {
+        price: { name: "price", type: "int", value: "100" },
+      },
+      callStack: [{ methodName: "main", className: "Main", line: 3 }],
+      heapObjects: {},
+      output: "",
+    };
+
+    const explanation = buildStepExplanation(event);
+
+    // Beginner mode assertions: clear, simple vocabulary, key value highlighted
+    assert.ok(explanation.beginnerMode);
+    assert.strictEqual(explanation.beginnerMode.keyValues, "price = 100");
+    assert.ok(explanation.beginnerMode.summary.includes("Create variable 'price'"));
+    assert.ok(explanation.beginnerMode.plainReason.includes("container"));
+
+    // Detailed mode assertions: technical terminology, stack frame, compiler/JVM reasoning
+    assert.ok(explanation.detailedMode);
+    assert.ok(explanation.detailedMode.technicalMechanics.includes("Allocated slot in local variable array"));
+    assert.ok(explanation.detailedMode.runtimeScope.includes("main()"));
+    assert.ok(explanation.detailedMode.stackHeapImplication.includes("call-stack frame"));
+    assert.ok(explanation.detailedMode.compilerOrJvmReasoning.includes("Java compiler verified"));
+  });
 });

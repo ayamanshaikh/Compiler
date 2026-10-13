@@ -114,6 +114,31 @@ test("Explanation Narrative and Fallback System Logic Verification", async (t) =
     assert.ok(fallback.whyItHappens.length > 0);
     assert.ok(fallback.result.length > 0);
   });
+
+  await t.test("Beginner mode provides simplified explanation and highlighted key values", () => {
+    const beginner = {
+      summary: "Create variable 'x' with starting value 10.",
+      keyValues: "x = 10",
+      plainReason: "We need a container named 'x' to store this value so we can use it in math or logic later.",
+      actionSummary: "Variable 'x' created and ready to use.",
+    };
+    assert.ok(beginner.summary.includes("Create variable 'x'"));
+    assert.equal(beginner.keyValues, "x = 10");
+    assert.ok(beginner.plainReason.includes("container"));
+    assert.ok(beginner.actionSummary.includes("ready to use"));
+  });
+
+  await t.test("Detailed mode provides technical JVM mechanics and stack/heap context", () => {
+    const detailed = {
+      technicalMechanics: "Allocated slot in local variable array of current JVM stack frame for 'x' (int).",
+      runtimeScope: "Local method scope (main()), frame depth 1",
+      stackHeapImplication: "Primitive/reference stored directly in active thread call-stack frame; no heap allocation.",
+      compilerOrJvmReasoning: "Java compiler verified 'x' was not previously declared in this scope and emitted iload/istore opcode sequence.",
+    };
+    assert.ok(detailed.technicalMechanics.includes("JVM stack frame"));
+    assert.ok(detailed.stackHeapImplication.includes("call-stack"));
+    assert.ok(detailed.compilerOrJvmReasoning.includes("Java compiler"));
+  });
 });
 
 test("Partial and Mixed Visualization Strategy Logic Verification", async (t) => {

@@ -313,6 +313,18 @@ export interface StructuredStepExplanation {
   controlFlowNote?: string;
   category: string;
   isVisualCapable: boolean;
+  beginnerMode: {
+    summary: string;
+    keyValues: string;
+    plainReason: string;
+    actionSummary: string;
+  };
+  detailedMode: {
+    technicalMechanics: string;
+    runtimeScope: string;
+    stackHeapImplication: string;
+    compilerOrJvmReasoning: string;
+  };
 }
 
 export interface TraceRequestPayload {

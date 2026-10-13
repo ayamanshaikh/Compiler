@@ -74,6 +74,18 @@ export function buildStepExplanation(
         result: `'${symbol}' is now initialized and holds value ${curr || "default"}.`,
         learnMore: getLearnMoreForType(typeStr),
         isVisualCapable: isVisual,
+        beginnerMode: {
+          summary: `Create variable '${symbol}' with starting value ${curr || "0"}.`,
+          keyValues: `${symbol} = ${curr || "0"}`,
+          plainReason: `We need a container named '${symbol}' to store this value so we can use it in math or logic later.`,
+          actionSummary: `Variable '${symbol}' created and ready to use.`,
+        },
+        detailedMode: {
+          technicalMechanics: `Allocated slot in local variable array of current JVM stack frame for '${symbol}' (${typeStr}). Initialized with value ${curr || "default"}.`,
+          runtimeScope: `Local method scope (${event.scope || "main()"}), frame depth ${event.callStack?.length || 1}`,
+          stackHeapImplication: `Primitive/reference stored directly in active thread call-stack frame; no heap allocation unless instantiated.`,
+          compilerOrJvmReasoning: `Java compiler verified '${symbol}' was not previously declared in this scope and emitted iload/istore opcode sequence.`,
+        },
       };
 
     case "VARIABLE_ASSIGNMENT":
@@ -96,6 +108,18 @@ export function buildStepExplanation(
         learnMore:
           "Java evaluates the entire right-hand side expression first, then stores the final computed result into the left-hand variable.",
         isVisualCapable: isVisual,
+        beginnerMode: {
+          summary: `Change '${symbol}' to ${curr}${isMutation ? ` (was ${prev})` : ""}.`,
+          keyValues: isMutation ? `${symbol}: ${prev} ➔ ${curr}` : `${symbol} = ${curr}`,
+          plainReason: `The program calculated a new value and saved it into '${symbol}', replacing any old number.`,
+          actionSummary: `'${symbol}' updated to ${curr}.`,
+        },
+        detailedMode: {
+          technicalMechanics: `Evaluated RHS expression onto operand stack and executed store opcode targeting local variable index for symbol '${symbol}'. Value changed from ${prev ?? "unassigned"} to ${curr}.`,
+          runtimeScope: `Active scope (${event.scope || "local"}), line ${event.sourceLine}`,
+          stackHeapImplication: `Direct 32/64-bit slot overwrite in current execution frame on thread call stack.`,
+          compilerOrJvmReasoning: `JVM verifies runtime type compatibility between assigned value and variable type '${typeStr}'.`,
+        },
       };
     }
 
@@ -123,6 +147,20 @@ export function buildStepExplanation(
         learnMore:
           "Java if conditions require strict boolean expressions. In compound expressions (&&, ||), Java uses short-circuit evaluation.",
         isVisualCapable: isVisual,
+        beginnerMode: {
+          summary: `Checking if '${condExpr}' is true: result is ${isTrue ? "YES (True)" : "NO (False)"}.`,
+          keyValues: `${condExpr} ➔ ${isTrue ? "TRUE" : "FALSE"}`,
+          plainReason: isTrue
+            ? "Since the question is true, we go inside the if-block to run its code."
+            : "Since the question is false, we skip past the if-block.",
+          actionSummary: isTrue ? "Entering if-block code." : "Skipping if-block code.",
+        },
+        detailedMode: {
+          technicalMechanics: `Evaluated boolean relational expression '${condExpr}'. Emitted conditional branch opcode; condition flag set to ${isTrue}.`,
+          runtimeScope: `Decision guard at source line ${event.sourceLine}`,
+          stackHeapImplication: `Program Counter (PC) conditional jump: ${isTrue ? "fall-through into then-block" : "forward branch jump offset past block"}.`,
+          compilerOrJvmReasoning: `Short-circuit boolean operators evaluated. Guard expression evaluated to primitive boolean on operand stack.`,
+        },
       };
     }
 
@@ -150,6 +188,18 @@ export function buildStepExplanation(
         learnMore:
           "A Java for loop follows a standard 4-step cycle: Initialization -> Condition Check -> Body Execution -> Update Expression (↺).",
         isVisualCapable: isVisual,
+        beginnerMode: {
+          summary: `Loop pass #${iteration}${loopVar ? `: counter '${loopVar[0]}' is ${loopVar[1].value}` : ""}.`,
+          keyValues: `Pass #${iteration}${loopVar ? ` (${loopVar[0]}=${loopVar[1].value})` : ""}`,
+          plainReason: "The loop condition is still met, so the computer loops back and runs the code block again.",
+          actionSummary: `Executing pass #${iteration} of loop.`,
+        },
+        detailedMode: {
+          technicalMechanics: `Loop boundary predicate satisfied. Control flow dispatched through loop body iteration #${iteration}.`,
+          runtimeScope: `Loop iteration scope (iteration #${iteration})`,
+          stackHeapImplication: `Local variable array persists state; operand stack reset for body statements.`,
+          compilerOrJvmReasoning: `Iterative cycle backed by comparison and backward goto instruction.`,
+        },
       };
     }
 
@@ -168,6 +218,18 @@ export function buildStepExplanation(
         learnMore:
           "Variables declared inside a for loop header (such as `for (int i = 0; ...)`) go out of scope once the loop terminates.",
         isVisualCapable: isVisual,
+        beginnerMode: {
+          summary: "Loop is done! Condition is no longer true.",
+          keyValues: "Loop exit",
+          plainReason: "The loop finished all its passes and stopped repeating. The program moves on to the next line.",
+          actionSummary: "Loop exited; proceeding to next lines.",
+        },
+        detailedMode: {
+          technicalMechanics: `Loop termination predicate evaluated to false. Backward goto bypassed; control advances to following bytecode instruction.`,
+          runtimeScope: `Exiting loop block scope`,
+          stackHeapImplication: `Loop-scoped variables dereferenced from active scope; stack frames preserved.`,
+          compilerOrJvmReasoning: `JVM advances instruction pointer past loop block boundary.`,
+        },
       };
 
     case "ARRAY_MUTATION":
@@ -191,6 +253,24 @@ export function buildStepExplanation(
         learnMore:
           "Java arrays are zero-indexed and fixed in length upon allocation. Accessing an index outside [0, length - 1] raises an ArrayIndexOutOfBoundsException.",
         isVisualCapable: isVisual,
+        beginnerMode: {
+          summary: isMutation
+            ? `Change array item at slot [${targetIndex ?? 0}] to ${curr}.`
+            : `Read array item at slot [${targetIndex ?? 0}], which is ${curr}.`,
+          keyValues: `${symbol || "array"}[${targetIndex ?? 0}] = ${curr}`,
+          plainReason: isMutation
+            ? "We are storing a new value into this specific numbered position in the list."
+            : "We are fetching the value currently saved in this numbered position.",
+          actionSummary: isMutation ? "Array element updated." : "Array element read.",
+        },
+        detailedMode: {
+          technicalMechanics: isMutation
+            ? `Array store opcode (iastore/aastore) targeting index ${targetIndex ?? 0} with operand value '${curr}'.`
+            : `Array load opcode (iaload/aaload) from index ${targetIndex ?? 0}.`,
+          runtimeScope: `Heap buffer access via reference symbol '${symbol || "arr"}'`,
+          stackHeapImplication: `Direct memory cell mutation in contiguous heap array buffer; array reference pointer unchanged.`,
+          compilerOrJvmReasoning: `JVM boundary check: ensures 0 <= index < array.length prior to memory access, throwing ArrayIndexOutOfBoundsException on violation.`,
+        },
       };
     }
 
@@ -208,6 +288,18 @@ export function buildStepExplanation(
         learnMore:
           "System.out is a PrintStream object that outputs text to standard output (stdout), automatically converting objects to string representations via toString().",
         isVisualCapable: isVisual,
+        beginnerMode: {
+          summary: `Print message: "${curr || event.output}".`,
+          keyValues: `Stdout: "${curr || event.output}"`,
+          plainReason: "System.out.println tells the computer to show this message in the console output.",
+          actionSummary: `Printed "${curr || event.output}" to output window.`,
+        },
+        detailedMode: {
+          technicalMechanics: `Virtual method call on java.lang.System.out (PrintStream instance). Flushed byte stream to stdout descriptor.`,
+          runtimeScope: `Standard output stream runtime pipe`,
+          stackHeapImplication: `String instance passed to PrintStream; character array encoded and transferred to OS stdout buffer.`,
+          compilerOrJvmReasoning: `Resolved static field java.lang.System.out and dispatched invokevirtual PrintStream.println.`,
+        },
       };
 
     case "FUNCTION_CALL":
@@ -228,6 +320,18 @@ export function buildStepExplanation(
         learnMore:
           "Java passes all parameters by value: primitives pass a copy of the value, while objects pass a copy of the reference address.",
         isVisualCapable: isVisual,
+        beginnerMode: {
+          summary: `Call '${methodName}()' to execute its steps.`,
+          keyValues: `Calling ${methodName}()`,
+          plainReason: `The program jumps to '${methodName}()' to run the actions defined inside it.`,
+          actionSummary: `Entered '${methodName}()'.`,
+        },
+        detailedMode: {
+          technicalMechanics: `Invoked method '${methodName}' (invokestatic/invokevirtual). Pushed new execution frame onto JVM thread call stack.`,
+          runtimeScope: `New call stack frame scope: ${methodName}()`,
+          stackHeapImplication: `Allocates dedicated local variable table and operand stack on current execution thread stack.`,
+          compilerOrJvmReasoning: `Bytecode invocation passes arguments and binds formal parameters in newly pushed frame.`,
+        },
       };
     }
 
@@ -246,6 +350,18 @@ export function buildStepExplanation(
         learnMore:
           "Local variables in a method frame are discarded upon return, freeing their stack memory.",
         isVisualCapable: isVisual,
+        beginnerMode: {
+          summary: `Finished method and returning to caller${curr ? ` with result ${curr}` : ""}.`,
+          keyValues: curr ? `Returned: ${curr}` : `Return to caller`,
+          plainReason: "The function is done with its work and hands control back to where it was called.",
+          actionSummary: "Returned back to calling code.",
+        },
+        detailedMode: {
+          technicalMechanics: `Executed return opcode (return/ireturn/areturn). Popped top stack frame from call stack.`,
+          runtimeScope: `Returning to caller frame: ${event.callStack?.[1]?.methodName || "caller"}`,
+          stackHeapImplication: `Frame deallocated from call stack; return value placed atop caller's operand stack.`,
+          compilerOrJvmReasoning: `Type-checked return value matches declared method return signature.`,
+        },
       };
 
     case "OBJECT_CREATE":
@@ -263,6 +379,18 @@ export function buildStepExplanation(
         learnMore:
           "Objects in Java reside in the heap and are automatically reclaimed by the Garbage Collector when no active references point to them.",
         isVisualCapable: isVisual,
+        beginnerMode: {
+          summary: `Created a new '${symbol || typeStr}' object in memory.`,
+          keyValues: `new ${symbol || typeStr}()`,
+          plainReason: "The 'new' keyword builds a new object and sets up its starting values.",
+          actionSummary: `New '${symbol || typeStr}' created.`,
+        },
+        detailedMode: {
+          technicalMechanics: `Bytecode 'new' opcode allocated uninitialized memory on heap; invoked constructor via 'invokespecial' <init>.`,
+          runtimeScope: `Heap instance bound to local variable reference '${symbol}'`,
+          stackHeapImplication: `Object header, field storage, and method table pointer allocated on heap; stack slot receives 64-bit reference address.`,
+          compilerOrJvmReasoning: `Instantiates class hierarchy from java.lang.Object down, assigning default field values before constructor body executes.`,
+        },
       };
 
     case "EXCEPTION":
@@ -279,6 +407,18 @@ export function buildStepExplanation(
         learnMore:
           "In Java, all exceptions inherit from java.lang.Throwable. RuntimeExceptions are unchecked, while others must be declared or caught.",
         isVisualCapable: false,
+        beginnerMode: {
+          summary: `An error happened: ${event.description}.`,
+          keyValues: `Exception: ${event.description}`,
+          plainReason: "The computer hit an illegal or impossible condition (like dividing by zero or missing index), stopping the program.",
+          actionSummary: "Program stopped due to runtime error.",
+        },
+        detailedMode: {
+          technicalMechanics: `Runtime exception thrown: ${event.description}. Initiated stack unwinding search for active exception handler.`,
+          runtimeScope: `Thread execution context (uncaught)`,
+          stackHeapImplication: `Instantiation of Throwable object on heap capturing execution stack backtrace.`,
+          compilerOrJvmReasoning: `Control diverted to JVM exception table or thread default uncaught exception handler.`,
+        },
       };
 
     default:
@@ -298,6 +438,20 @@ export function buildStepExplanation(
         learnMore:
           "Java programs execute statement-by-statement in sequential order unless altered by branching, looping, or function calls.",
         isVisualCapable: isVisual,
+        beginnerMode: {
+          summary: lineContent ? `Ran line: ${lineContent}` : `Ran code at line ${event.sourceLine}.`,
+          keyValues: `Line ${event.sourceLine}`,
+          plainReason: "The computer runs instructions sequentially from top to bottom.",
+          actionSummary: "Instruction completed.",
+        },
+        detailedMode: {
+          technicalMechanics: lineContent
+            ? `Executed instruction sequence corresponding to: ${lineContent}`
+            : `Executed instruction sequence at source line ${event.sourceLine}.`,
+          runtimeScope: `Sequential scope: ${event.scope || "main"}`,
+          stackHeapImplication: `Program Counter advanced; local operand stack and variables maintained.`,
+          compilerOrJvmReasoning: `Sequential instruction execution following bytecode ordering in class file.`,
+        },
       };
   }
 }
