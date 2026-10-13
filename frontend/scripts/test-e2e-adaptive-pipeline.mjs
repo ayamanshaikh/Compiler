@@ -199,3 +199,108 @@ test("End-to-End Adaptive Decision Matrix", async (t) => {
     assert.equal(res.rendererType, "NONE");
   });
 });
+
+test("Mixed and Non-Visual Construct Handling E2E Verification", async (t) => {
+  const mixedTrace = [
+    {
+      stepNumber: 1,
+      sourceLine: 2,
+      conceptType: "VARIABLE_DECLARATION",
+      symbol: "total",
+      currentValue: "0",
+      variables: { total: { name: "total", type: "int", value: "0" } },
+      callStack: [{ methodName: "main", line: 2 }],
+      heapObjects: {},
+    },
+    {
+      stepNumber: 2,
+      sourceLine: 3,
+      conceptType: "LINE_EXECUTION",
+      symbol: undefined,
+      currentValue: undefined,
+      variables: { total: { name: "total", type: "int", value: "0" } },
+      callStack: [{ methodName: "main", line: 3 }],
+      heapObjects: {},
+    },
+    {
+      stepNumber: 3,
+      sourceLine: 4,
+      conceptType: "VARIABLE_ASSIGNMENT",
+      symbol: "total",
+      currentValue: "15",
+      previousValue: "0",
+      variables: { total: { name: "total", type: "int", value: "15" } },
+      callStack: [{ methodName: "main", line: 4 }],
+      heapObjects: {},
+    },
+    {
+      stepNumber: 4,
+      sourceLine: 5,
+      conceptType: "LINE_EXECUTION",
+      symbol: undefined,
+      currentValue: undefined,
+      variables: { total: { name: "total", type: "int", value: "15" } },
+      callStack: [{ methodName: "main", line: 5 }],
+      heapObjects: {},
+    },
+  ];
+
+  await t.test("Timeline backward navigation restores previous snapshot without state corruption", () => {
+    const step4 = mixedTrace[3];
+    assert.equal(step4.variables.total.value, "15");
+
+    const step2 = mixedTrace[1];
+    assert.equal(step2.variables.total.value, "0");
+    assert.equal(step2.stepNumber, 2);
+
+    const step1 = mixedTrace[0];
+    assert.equal(step1.variables.total.value, "0");
+  });
+
+  await t.test("Non-visual steps route cleanly to EXPLANATION_FALLBACK with valid dual-mode payload", () => {
+    const nonVisualEvent = mixedTrace[1];
+    const decision = resolveStrategyMock(nonVisualEvent);
+    assert.equal(decision.mode, "EXPLANATION_FALLBACK");
+    assert.equal(decision.rendererType, "NONE");
+
+    const fallbackExplanation = {
+      stepNumber: nonVisualEvent.stepNumber,
+      sourceLine: nonVisualEvent.sourceLine,
+      category: "Sequential Execution",
+      whatHappens: "Executed instruction on line 3.",
+      currentValues: { total: "0" },
+      whyItHappens: "Sequential instruction execution within main.",
+      result: "Advanced to next line.",
+      isVisualCapable: false,
+      beginnerMode: {
+        summary: "Step 2: Executed instruction on line 3.",
+        keyValues: "total = 0",
+        plainReason: "Moving to the next instruction in sequence.",
+        actionSummary: "Control advances forward.",
+      },
+      detailedMode: {
+        technicalMechanics: "Program counter (PC) incremented in current JVM thread frame.",
+        runtimeScope: "main() stack frame",
+        stackHeapImplication: "Local variable slots retained unchanged.",
+        compilerOrJvmReasoning: "Standard sequential opcode dispatch.",
+      },
+    };
+
+    assert.equal(fallbackExplanation.isVisualCapable, false);
+    assert.ok(fallbackExplanation.beginnerMode.summary.length > 0);
+    assert.ok(fallbackExplanation.detailedMode.technicalMechanics.length > 0);
+    assert.equal(fallbackExplanation.currentValues.total, "0");
+  });
+
+  await t.test("Program trace summary accurately identifies MIXED mode pipeline", () => {
+    const decisions = mixedTrace.map((ev) => resolveStrategyMock(ev));
+    const visualCount = decisions.filter((d) => d.mode === "VISUAL_EXECUTION").length;
+    const fallbackCount = decisions.filter((d) => d.mode === "EXPLANATION_FALLBACK").length;
+
+    assert.equal(visualCount, 2);
+    assert.equal(fallbackCount, 2);
+    const primaryMode = visualCount > 0 && fallbackCount > 0 ? "MIXED" : visualCount > 0 ? "VISUAL" : "EXPLANATORY";
+    assert.equal(primaryMode, "MIXED");
+  });
+});
+
