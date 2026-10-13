@@ -27,6 +27,7 @@ import {
   TraceHistoryEntry,
 } from "@/lib/visualizer/traceHistory";
 import { TraceHistoryModal } from "@/components/visualizer/TraceHistoryModal";
+import { CompilerPipelineVisualizer } from "@/components/visualizer/compiler/CompilerPipelineVisualizer";
 import {
   Play,
   Sparkles,
@@ -44,6 +45,7 @@ import {
   CheckCircle2,
   Upload,
   History,
+  GitFork,
 } from "lucide-react";
 
 export interface TracePreset {
@@ -292,12 +294,14 @@ function VisualizeContent() {
   const initialMode =
     typeof window !== "undefined" && window.location.hash.includes("share=")
       ? "trace"
+      : searchParams.get("mode") === "compiler"
+      ? "compiler"
       : searchParams.get("mode") === "trace"
       ? "trace"
       : "algorithm";
 
   // Visualizer Mode
-  const [activeMode, setActiveMode] = useState<"algorithm" | "trace">(initialMode);
+  const [activeMode, setActiveMode] = useState<"algorithm" | "trace" | "compiler">(initialMode);
 
   // -------------------------------------------------------------
   // Algorithm Visualizer State
@@ -525,7 +529,9 @@ function VisualizeContent() {
             <Badge variant="success" size="sm" dot>
               {activeMode === "algorithm"
                 ? "Algorithm Simulator"
-                : "Authentic JVM Tracer"}
+                : activeMode === "trace"
+                ? "Authentic JVM Tracer"
+                : "Compiler Pipeline Explorer"}
             </Badge>
           }
         />
@@ -558,6 +564,20 @@ function VisualizeContent() {
           >
             <Terminal className="w-4 h-4 mr-1.5" />
             JVM Program Tracer
+          </Button>
+
+          <Button
+            variant={activeMode === "compiler" ? "primary" : "ghost"}
+            size="sm"
+            onClick={() => setActiveMode("compiler")}
+            className={
+              activeMode === "compiler"
+                ? "bg-indigo-600 hover:bg-indigo-500 text-white font-medium"
+                : "text-zinc-400 hover:text-zinc-200"
+            }
+          >
+            <GitFork className="w-4 h-4 mr-1.5" />
+            Compiler Pipeline Explorer
           </Button>
         </div>
 
@@ -793,6 +813,15 @@ function VisualizeContent() {
                 <TraceVisualizer trace={jvmTrace} sourceCode={sourceCode} />
                 <div className="flex justify-end gap-2">
                   <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setActiveMode("compiler")}
+                    className="text-xs text-indigo-400 border-indigo-900/50 hover:bg-indigo-950/40"
+                  >
+                    <GitFork className="w-3.5 h-3.5 mr-1" />
+                    Inspect Compiler Pipeline
+                  </Button>
+                  <Button
                     variant="ghost"
                     size="sm"
                     onClick={() => setJvmTrace(null)}
@@ -891,6 +920,39 @@ function VisualizeContent() {
                 </div>
               </div>
             )}
+          </div>
+        )}
+
+        {/* MODE 3: Compiler Pipeline Explorer */}
+        {activeMode === "compiler" && (
+          <div className="space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b border-zinc-800">
+              <div>
+                <h2 className="text-base font-semibold text-zinc-100 flex items-center gap-2">
+                  <GitFork className="w-5 h-5 text-indigo-400" />
+                  <span>OpenJDK Compilation & Disassembly Pipeline</span>
+                </h2>
+                <p className="text-xs text-zinc-400 mt-0.5">
+                  Explore Lexical Tokens, Abstract Syntax Tree, Symbol Table, and Bytecode Disassembly with live line correlation.
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setActiveMode("trace")}
+                  className="text-xs text-zinc-300 border-zinc-700 hover:bg-zinc-800"
+                >
+                  <Play className="w-3.5 h-3.5 mr-1 text-emerald-400" />
+                  Switch to JVM Tracer
+                </Button>
+              </div>
+            </div>
+
+            <CompilerPipelineVisualizer
+              sourceCode={sourceCode}
+              className="Main"
+            />
           </div>
         )}
         {/* Trace History & Comparison Modal */}

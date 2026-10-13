@@ -14,6 +14,7 @@ import {
   ExecuteResponsePayload,
   CompilerDiagnostic,
 } from "@/lib/api/types";
+import { CompilerPipelineVisualizer } from "@/components/visualizer/compiler/CompilerPipelineVisualizer";
 import {
   Play,
   RotateCcw,
@@ -29,6 +30,7 @@ import {
   Sparkles,
   Layers,
   Send,
+  GitFork,
 } from "lucide-react";
 
 const DEFAULT_JAVA_CODE = `public class Main {
@@ -54,7 +56,7 @@ export default function WorkspacePage() {
   const [isCompiling, setIsCompiling] = useState<boolean>(false);
   const [executionResult, setExecutionResult] = useState<ExecuteResponsePayload | null>(null);
   const [compileResult, setCompileResult] = useState<CompileResponsePayload | null>(null);
-  const [activeTab, setActiveTab] = useState<"stdout" | "stdin" | "diagnostics">("stdout");
+  const [activeTab, setActiveTab] = useState<"stdout" | "stdin" | "diagnostics" | "pipeline">("stdout");
   const [errorStatus, setErrorStatus] = useState<string | null>(null);
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -222,6 +224,28 @@ export default function WorkspacePage() {
                   className="hover:border-accent/60 hover:text-accent transition-colors"
                 >
                   Visualize Trace
+                </Button>
+              </NextLink>
+
+              {/* Compiler Pipeline Explorer Shortcut */}
+              <NextLink
+                href={`/visualize?mode=compiler`}
+                onClick={() => {
+                  try {
+                    sessionStorage.setItem("codevista_trace_source", sourceCode);
+                  } catch {
+                    // Ignore storage errors if private mode
+                  }
+                }}
+              >
+                <Button
+                  variant="outline"
+                  size="sm"
+                  leftIcon={<GitFork className="w-3.5 h-3.5 text-indigo-400" />}
+                  title="Explore compiler pipeline stages (Tokens, AST, Symbols, Bytecode)"
+                  className="hover:border-indigo-500/60 hover:text-indigo-300 transition-colors hidden md:inline-flex"
+                >
+                  Compiler Pipeline
                 </Button>
               </NextLink>
 
@@ -411,6 +435,19 @@ export default function WorkspacePage() {
                   </span>
                 )}
               </button>
+
+              <button
+                type="button"
+                onClick={() => setActiveTab("pipeline")}
+                className={`px-3 py-2 text-xs font-medium rounded-t-lg transition-colors cursor-pointer flex items-center gap-1.5 ${
+                  activeTab === "pipeline"
+                    ? "bg-zinc-950 text-accent border-t-2 border-accent"
+                    : "text-zinc-400 hover:text-zinc-200"
+                }`}
+              >
+                <GitFork className="w-3.5 h-3.5 text-indigo-400" />
+                <span>Pipeline</span>
+              </button>
             </div>
 
             {/* Panel Content Body */}
@@ -550,6 +587,17 @@ export default function WorkspacePage() {
                       </p>
                     </div>
                   )}
+                </div>
+              )}
+
+              {/* PIPELINE TAB */}
+              {activeTab === "pipeline" && (
+                <div className="flex-1 flex flex-col p-2 overflow-y-auto">
+                  <CompilerPipelineVisualizer
+                    sourceCode={sourceCode}
+                    className="Main"
+                    classNameOverride="border-0 shadow-none bg-transparent"
+                  />
                 </div>
               )}
             </div>
