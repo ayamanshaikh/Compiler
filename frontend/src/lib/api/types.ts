@@ -126,6 +126,84 @@ export interface CompileResponsePayload {
   mainClass?: string;
 }
 
+export type CompilerStageType =
+  | "SOURCE_CODE"
+  | "LEXICAL_ANALYSIS"
+  | "SYNTAX_ANALYSIS"
+  | "SYMBOL_RESOLUTION"
+  | "BYTECODE_DISASSEMBLY";
+
+export interface CompilerToken {
+  index: number;
+  type: string;
+  value: string;
+  line: number;
+  column: number;
+  endColumn: number;
+  category: "KEYWORD" | "IDENTIFIER" | "LITERAL" | "OPERATOR" | "SEPARATOR" | "COMMENT" | "UNKNOWN" | string;
+}
+
+export interface AstNode {
+  id: string;
+  kind: string;
+  label: string;
+  line: number;
+  column: number;
+  endLine: number;
+  endColumn: number;
+  details: string;
+  children: AstNode[];
+}
+
+export interface CompilerSymbol {
+  name: string;
+  kind: string;
+  type: string;
+  scope: string;
+  line: number;
+  column: number;
+  initialValue?: string;
+}
+
+export interface BytecodeInstruction {
+  offset: number;
+  opcode: string;
+  arguments: string;
+  line: number;
+  explanation: string;
+  methodName: string;
+}
+
+export interface CompilerStageInfo {
+  stage: CompilerStageType;
+  name: string;
+  description: string;
+  purpose: string;
+  status: "SUCCESS" | "WARNING" | "ERROR" | "OMITTED";
+  isRealOutput: boolean;
+  toolchain: string;
+}
+
+export interface CompilerPipelineRequestPayload {
+  language?: string;
+  sourceCode: string;
+  className?: string;
+}
+
+export interface CompilerPipelineResponsePayload {
+  success: boolean;
+  sourceCode: string;
+  className: string;
+  diagnostics: CompilerDiagnostic[];
+  stages: CompilerStageInfo[];
+  tokens: CompilerToken[];
+  astRoot: AstNode;
+  symbols: CompilerSymbol[];
+  bytecode: BytecodeInstruction[];
+  rawBytecodeOutput: string;
+  compilationTimeMs: number;
+}
+
 export type ExecutionStatus =
   | "SUCCESS"
   | "COMPILATION_ERROR"

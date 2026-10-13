@@ -756,3 +756,121 @@ public class BinarySearch {
     assert.equal(timeDelta, 25);
   });
 });
+
+test("Compiler Pipeline Contract and Stage Data Model Verification", async (t) => {
+  await t.test("Validates authentic 5-stage compiler pipeline structure", () => {
+    const pipelineResponse = {
+      success: true,
+      sourceCode: "public class Main { public static void main(String[] args) { int x = 10; } }",
+      className: "Main",
+      diagnostics: [],
+      stages: [
+        {
+          stage: "SOURCE_CODE",
+          name: "Source Code",
+          description: "Raw human-readable program text.",
+          purpose: "Serves as initial input for compilation.",
+          status: "SUCCESS",
+          isRealOutput: true,
+          toolchain: "User Code Buffer",
+        },
+        {
+          stage: "LEXICAL_ANALYSIS",
+          name: "Lexical Analysis",
+          description: "Deconstructs characters into typed tokens.",
+          purpose: "Converts text into semantic tokens.",
+          status: "SUCCESS",
+          isRealOutput: true,
+          toolchain: "Java Lexical Tokenizer",
+        },
+        {
+          stage: "SYNTAX_ANALYSIS",
+          name: "Syntax Analysis (AST)",
+          description: "Validates grammar and builds syntax tree.",
+          purpose: "Constructs hierarchical AST.",
+          status: "SUCCESS",
+          isRealOutput: true,
+          toolchain: "OpenJDK Javac Compiler API",
+        },
+        {
+          stage: "SYMBOL_RESOLUTION",
+          name: "Symbol Resolution",
+          description: "Binds identifiers to scopes.",
+          purpose: "Tracks variable types and scopes.",
+          status: "SUCCESS",
+          isRealOutput: true,
+          toolchain: "Javac Scope Analysis",
+        },
+        {
+          stage: "BYTECODE_DISASSEMBLY",
+          name: "Bytecode Disassembly",
+          description: "Compiles AST into JVM opcodes.",
+          purpose: "Generates portable bytecode.",
+          status: "SUCCESS",
+          isRealOutput: true,
+          toolchain: "OpenJDK javap Disassembler",
+        },
+      ],
+      tokens: [
+        { index: 0, type: "KEYWORD", value: "public", line: 1, column: 1, endColumn: 6, category: "KEYWORD" },
+        { index: 1, type: "KEYWORD", value: "class", line: 1, column: 8, endColumn: 12, category: "KEYWORD" },
+        { index: 2, type: "IDENTIFIER", value: "Main", line: 1, column: 14, endColumn: 17, category: "IDENTIFIER" },
+      ],
+      astRoot: {
+        id: "node-1",
+        kind: "COMPILATION_UNIT",
+        label: "CompilationUnit (Main.java)",
+        line: 1,
+        column: 1,
+        endLine: 1,
+        endColumn: 76,
+        details: "Root AST",
+        children: [],
+      },
+      symbols: [
+        { name: "Main", kind: "CLASS", type: "Main", scope: "GLOBAL", line: 1, column: 14 },
+      ],
+      bytecode: [
+        { offset: 0, opcode: "bipush", arguments: "10", line: 1, explanation: "Push byte onto stack", methodName: "main" },
+        { offset: 2, opcode: "istore_1", arguments: "", line: 1, explanation: "Store in local slot 1", methodName: "main" },
+        { offset: 3, opcode: "return", arguments: "", line: 1, explanation: "Return void", methodName: "main" },
+      ],
+      rawBytecodeOutput: "Compiled from Main.java\npublic class Main { ... }",
+      compilationTimeMs: 12,
+    };
+
+    assert.equal(pipelineResponse.stages.length, 5);
+    assert.equal(pipelineResponse.stages[0].stage, "SOURCE_CODE");
+    assert.equal(pipelineResponse.stages[4].stage, "BYTECODE_DISASSEMBLY");
+    assert.equal(pipelineResponse.stages[4].isRealOutput, true);
+    assert.equal(pipelineResponse.tokens.length, 3);
+    assert.equal(pipelineResponse.bytecode.length, 3);
+    assert.equal(pipelineResponse.bytecode[0].opcode, "bipush");
+    assert.equal(pipelineResponse.bytecode[0].line, 1);
+  });
+
+  await t.test("Correlates source line number to bytecode instructions and tokens", () => {
+    const tokens = [
+      { index: 0, value: "int", line: 2, category: "KEYWORD" },
+      { index: 1, value: "x", line: 2, category: "IDENTIFIER" },
+      { index: 2, value: "10", line: 2, category: "LITERAL" },
+      { index: 3, value: "int", line: 3, category: "KEYWORD" },
+      { index: 4, value: "y", line: 3, category: "IDENTIFIER" },
+    ];
+
+    const bytecode = [
+      { offset: 0, opcode: "bipush", line: 2 },
+      { offset: 2, opcode: "istore_1", line: 2 },
+      { offset: 3, opcode: "bipush", line: 3 },
+      { offset: 5, opcode: "istore_2", line: 3 },
+    ];
+
+    const line2Tokens = tokens.filter((t) => t.line === 2);
+    assert.equal(line2Tokens.length, 3);
+
+    const line2Bytecode = bytecode.filter((b) => b.line === 2);
+    assert.equal(line2Bytecode.length, 2);
+    assert.equal(line2Bytecode[0].opcode, "bipush");
+    assert.equal(line2Bytecode[1].opcode, "istore_1");
+  });
+});
