@@ -249,6 +249,28 @@ export default function WorkspacePage() {
                 </Button>
               </NextLink>
 
+              {/* Hardware Simulator Shortcut */}
+              <NextLink
+                href={`/visualize?mode=systems`}
+                onClick={() => {
+                  try {
+                    sessionStorage.setItem("codevista_trace_source", sourceCode);
+                  } catch {
+                    // Ignore storage errors if private mode
+                  }
+                }}
+              >
+                <Button
+                  variant="outline"
+                  size="sm"
+                  leftIcon={<Cpu className="w-3.5 h-3.5 text-indigo-400" />}
+                  title="Simulate CPU cycles, registers, operand stack, and heap layout"
+                  className="hover:border-indigo-500/60 hover:text-indigo-300 transition-colors hidden lg:inline-flex"
+                >
+                  Hardware Simulator
+                </Button>
+              </NextLink>
+
               <Button
                 variant="secondary"
                 size="sm"

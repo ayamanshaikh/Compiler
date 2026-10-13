@@ -28,6 +28,7 @@ import {
 } from "@/lib/visualizer/traceHistory";
 import { TraceHistoryModal } from "@/components/visualizer/TraceHistoryModal";
 import { CompilerPipelineVisualizer } from "@/components/visualizer/compiler/CompilerPipelineVisualizer";
+import { HardwareSimulationVisualizer } from "@/components/visualizer/systems/HardwareSimulationVisualizer";
 import {
   Play,
   Sparkles,
@@ -294,6 +295,8 @@ function VisualizeContent() {
   const initialMode =
     typeof window !== "undefined" && window.location.hash.includes("share=")
       ? "trace"
+      : searchParams.get("mode") === "systems"
+      ? "systems"
       : searchParams.get("mode") === "compiler"
       ? "compiler"
       : searchParams.get("mode") === "trace"
@@ -301,7 +304,7 @@ function VisualizeContent() {
       : "algorithm";
 
   // Visualizer Mode
-  const [activeMode, setActiveMode] = useState<"algorithm" | "trace" | "compiler">(initialMode);
+  const [activeMode, setActiveMode] = useState<"algorithm" | "trace" | "compiler" | "systems">(initialMode);
 
   // -------------------------------------------------------------
   // Algorithm Visualizer State
@@ -531,7 +534,9 @@ function VisualizeContent() {
                 ? "Algorithm Simulator"
                 : activeMode === "trace"
                 ? "Authentic JVM Tracer"
-                : "Compiler Pipeline Explorer"}
+                : activeMode === "compiler"
+                ? "Compiler Pipeline Explorer"
+                : "Hardware & Systems Simulator"}
             </Badge>
           }
         />
@@ -578,6 +583,20 @@ function VisualizeContent() {
           >
             <GitFork className="w-4 h-4 mr-1.5" />
             Compiler Pipeline Explorer
+          </Button>
+
+          <Button
+            variant={activeMode === "systems" ? "primary" : "ghost"}
+            size="sm"
+            onClick={() => setActiveMode("systems")}
+            className={
+              activeMode === "systems"
+                ? "bg-indigo-600 hover:bg-indigo-500 text-white font-medium"
+                : "text-zinc-400 hover:text-zinc-200"
+            }
+          >
+            <Cpu className="w-4 h-4 mr-1.5" />
+            Hardware & Systems Simulator
           </Button>
         </div>
 
@@ -953,6 +972,75 @@ function VisualizeContent() {
               sourceCode={sourceCode}
               className="Main"
             />
+          </div>
+        )}
+
+        {/* MODE 4: Hardware & Systems Simulator */}
+        {activeMode === "systems" && (
+          <div className="space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b border-zinc-800">
+              <div>
+                <h2 className="text-base font-semibold text-zinc-100 flex items-center gap-2">
+                  <Cpu className="w-5 h-5 text-indigo-400" />
+                  <span>CPU, Registers & JVM Memory Simulator</span>
+                </h2>
+                <p className="text-xs text-zinc-400 mt-0.5">
+                  Examine how Java execution drives the CPU Program Counter, ALU operations, LIFO operand stack, and 64-bit aligned heap objects.
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                {!jvmTrace && (
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    onClick={handleRunJvmTrace}
+                    disabled={isJvmLoading}
+                    isLoading={isJvmLoading}
+                    className="bg-indigo-600 hover:bg-indigo-500 text-white font-medium"
+                  >
+                    <Play className="w-3.5 h-3.5 mr-1 fill-current" />
+                    Simulate Hardware Cycles
+                  </Button>
+                )}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setActiveMode("compiler")}
+                  className="text-xs text-zinc-300 border-zinc-700 hover:bg-zinc-800"
+                >
+                  <GitFork className="w-3.5 h-3.5 mr-1 text-indigo-400" />
+                  View Compiler Pipeline
+                </Button>
+              </div>
+            </div>
+
+            {jvmTrace && jvmTrace.steps && jvmTrace.steps.length > 0 ? (
+              <HardwareSimulationVisualizer
+                trace={jvmTrace}
+                sourceCode={sourceCode}
+              />
+            ) : (
+              <Card className="p-8 bg-zinc-900 border-zinc-800 flex flex-col items-center justify-center text-center gap-3">
+                <Cpu className="w-10 h-10 text-indigo-400 mb-1" />
+                <h3 className="text-sm font-semibold text-zinc-200">
+                  Ready to Simulate Computer Systems Architecture
+                </h3>
+                <p className="text-xs text-zinc-400 max-w-md leading-relaxed">
+                  Generate authentic JVM trace steps to step cycle-by-cycle through the CPU Program Counter, ALU flags, operand stack, and heap memory layout.
+                </p>
+                <Button
+                  variant="primary"
+                  size="sm"
+                  onClick={handleRunJvmTrace}
+                  disabled={isJvmLoading}
+                  isLoading={isJvmLoading}
+                  className="mt-2 bg-indigo-600 hover:bg-indigo-500 text-white font-medium"
+                >
+                  <Play className="w-3.5 h-3.5 mr-1 fill-current" />
+                  Run Hardware Simulation
+                </Button>
+              </Card>
+            )}
           </div>
         )}
         {/* Trace History & Comparison Modal */}

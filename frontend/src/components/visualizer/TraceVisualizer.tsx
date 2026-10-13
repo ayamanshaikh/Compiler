@@ -23,6 +23,7 @@ import {
   BookmarkCheck,
   SlidersHorizontal,
   Repeat,
+  Cpu,
 } from "lucide-react";
 import { TraceResponsePayload, TraceStep } from "@/lib/api/types";
 import { Button } from "@/components/ui/Button";
@@ -44,6 +45,7 @@ import { AdaptiveConceptDispatcher } from "@/components/visualizer/concepts/Adap
 import { StateDiffInspector } from "./StateDiffInspector";
 import { ComplexityEstimatorCard } from "./ComplexityEstimatorCard";
 import { ExplanationTimeline } from "@/components/visualizer/explanation/ExplanationTimeline";
+import { HardwareSimulationVisualizer } from "@/components/visualizer/systems/HardwareSimulationVisualizer";
 
 interface TraceVisualizerProps {
   trace: TraceResponsePayload;
@@ -55,7 +57,7 @@ export function TraceVisualizer({ trace, sourceCode }: TraceVisualizerProps) {
   const [currentStepIndex, setCurrentStepIndex] = useState<number>(0);
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
   const [speedMultiplier, setSpeedMultiplier] = useState<number>(1); // 0.5x, 1x, 2x
-  const [viewMode, setViewMode] = useState<"visual" | "narrative">("visual");
+  const [viewMode, setViewMode] = useState<"visual" | "systems" | "narrative">("visual");
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
   const steps = useMemo(() => trace.steps || [], [trace.steps]);
@@ -362,6 +364,19 @@ export function TraceVisualizer({ trace, sourceCode }: TraceVisualizerProps) {
           </button>
           <button
             type="button"
+            onClick={() => setViewMode("systems")}
+            className={`px-2.5 py-1 text-xs rounded font-medium flex items-center gap-1.5 transition-colors cursor-pointer ${
+              viewMode === "systems"
+                ? "bg-indigo-600/25 text-indigo-300 border border-indigo-500/50 font-semibold"
+                : "text-zinc-400 hover:bg-zinc-800"
+            }`}
+            title="CPU, Registers & JVM Memory Simulator"
+          >
+            <Cpu className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Systems & Hardware</span>
+          </button>
+          <button
+            type="button"
             onClick={() => setViewMode("narrative")}
             className={`px-2.5 py-1 text-xs rounded font-medium flex items-center gap-1.5 transition-colors cursor-pointer ${
               viewMode === "narrative"
@@ -553,8 +568,18 @@ export function TraceVisualizer({ trace, sourceCode }: TraceVisualizerProps) {
         </div>
       )}
 
-      {/* View Mode Content: Visual Inspector vs Step-by-Step Narrative */}
-      {viewMode === "visual" ? (
+      {/* View Mode Content: Systems Simulation vs Visual Inspector vs Step-by-Step Narrative */}
+      {viewMode === "systems" ? (
+        <HardwareSimulationVisualizer
+          trace={trace}
+          sourceCode={sourceCode}
+          currentStepIndex={currentStepIndex}
+          onStepChange={(idx) => {
+            setIsPlaying(false);
+            setCurrentStepIndex(idx);
+          }}
+        />
+      ) : viewMode === "visual" ? (
         <div className={`grid grid-cols-1 lg:grid-cols-12 ${visualDensity === "compact" ? "gap-2.5" : visualDensity === "spacious" ? "gap-6" : "gap-4"}`}>
           {/* Source Code Line View with Step Highlight */}
           <div className={`lg:col-span-7 rounded-lg font-mono overflow-auto max-h-[460px] ${
