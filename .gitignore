@@ -21,6 +21,8 @@ frontend/coverage/
 
 # IDE & OS
 *.tsbuildinfo
+AGENTS.md
+CLAUDE.md
 .idea/
 *.iml
 .vscode/
