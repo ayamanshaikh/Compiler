@@ -29,6 +29,7 @@ import {
 import { TraceHistoryModal } from "@/components/visualizer/TraceHistoryModal";
 import { CompilerPipelineVisualizer } from "@/components/visualizer/compiler/CompilerPipelineVisualizer";
 import { HardwareSimulationVisualizer } from "@/components/visualizer/systems/HardwareSimulationVisualizer";
+import { InteractiveComplexityVisualizer } from "@/components/visualizer/complexity/InteractiveComplexityVisualizer";
 import {
   Play,
   Sparkles,
@@ -47,6 +48,7 @@ import {
   Upload,
   History,
   GitFork,
+  TrendingUp,
 } from "lucide-react";
 
 export interface TracePreset {
@@ -295,6 +297,8 @@ function VisualizeContent() {
   const initialMode =
     typeof window !== "undefined" && window.location.hash.includes("share=")
       ? "trace"
+      : searchParams.get("mode") === "complexity"
+      ? "complexity"
       : searchParams.get("mode") === "systems"
       ? "systems"
       : searchParams.get("mode") === "compiler"
@@ -304,7 +308,7 @@ function VisualizeContent() {
       : "algorithm";
 
   // Visualizer Mode
-  const [activeMode, setActiveMode] = useState<"algorithm" | "trace" | "compiler" | "systems">(initialMode);
+  const [activeMode, setActiveMode] = useState<"algorithm" | "trace" | "compiler" | "systems" | "complexity">(initialMode);
 
   // -------------------------------------------------------------
   // Algorithm Visualizer State
@@ -536,13 +540,15 @@ function VisualizeContent() {
                 ? "Authentic JVM Tracer"
                 : activeMode === "compiler"
                 ? "Compiler Pipeline Explorer"
-                : "Hardware & Systems Simulator"}
+                : activeMode === "systems"
+                ? "Hardware & Systems Simulator"
+                : "Complexity & Resource Analysis"}
             </Badge>
           }
         />
 
         {/* Top Visualizer Mode Switcher */}
-        <div className="flex items-center gap-2 mb-6 border-b border-zinc-800 pb-3">
+        <div className="flex items-center gap-2 mb-6 border-b border-zinc-800 pb-3 flex-wrap">
           <Button
             variant={activeMode === "algorithm" ? "primary" : "ghost"}
             size="sm"
@@ -597,6 +603,20 @@ function VisualizeContent() {
           >
             <Cpu className="w-4 h-4 mr-1.5" />
             Hardware & Systems Simulator
+          </Button>
+
+          <Button
+            variant={activeMode === "complexity" ? "primary" : "ghost"}
+            size="sm"
+            onClick={() => setActiveMode("complexity")}
+            className={
+              activeMode === "complexity"
+                ? "bg-emerald-600 hover:bg-emerald-500 text-white font-medium"
+                : "text-zinc-400 hover:text-zinc-200"
+            }
+          >
+            <TrendingUp className="w-4 h-4 mr-1.5" />
+            Complexity & Big-O
           </Button>
         </div>
 
@@ -1040,6 +1060,60 @@ function VisualizeContent() {
                   Run Hardware Simulation
                 </Button>
               </Card>
+            )}
+          </div>
+        )}
+
+        {/* MODE 5: Time & Space Complexity Analysis */}
+        {activeMode === "complexity" && (
+          <div className="space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b border-zinc-800">
+              <div>
+                <h2 className="text-base font-semibold text-zinc-100 flex items-center gap-2">
+                  <TrendingUp className="w-5 h-5 text-emerald-400" />
+                  <span>Asymptotic Complexity & Resource Telemetry</span>
+                </h2>
+                <p className="text-xs text-zinc-400 mt-0.5">
+                  Evaluate Big-O, Big-Omega, Big-Theta, call stack frames, heap allocation, and canonical growth curves.
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                {!jvmTrace && (
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    onClick={handleRunJvmTrace}
+                    disabled={isJvmLoading}
+                    isLoading={isJvmLoading}
+                    className="bg-emerald-600 hover:bg-emerald-500 text-white font-medium"
+                  >
+                    <Play className="w-3.5 h-3.5 mr-1 fill-current" />
+                    Analyze Trace Complexity
+                  </Button>
+                )}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setActiveMode("systems")}
+                  className="text-xs text-zinc-300 border-zinc-700 hover:bg-zinc-800"
+                >
+                  <Cpu className="w-3.5 h-3.5 mr-1 text-indigo-400" />
+                  View Hardware Simulator
+                </Button>
+              </div>
+            </div>
+
+            {jvmTrace && jvmTrace.steps && jvmTrace.steps.length > 0 ? (
+              <InteractiveComplexityVisualizer
+                steps={jvmTrace.steps}
+                sourceCode={sourceCode}
+                executionDurationMs={jvmTrace.executionTimeMs}
+              />
+            ) : (
+              <InteractiveComplexityVisualizer
+                steps={[]}
+                sourceCode={sourceCode}
+              />
             )}
           </div>
         )}

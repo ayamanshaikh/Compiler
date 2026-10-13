@@ -31,6 +31,7 @@ import {
   Layers,
   Send,
   GitFork,
+  TrendingUp,
 } from "lucide-react";
 
 const DEFAULT_JAVA_CODE = `public class Main {
@@ -268,6 +269,28 @@ export default function WorkspacePage() {
                   className="hover:border-indigo-500/60 hover:text-indigo-300 transition-colors hidden lg:inline-flex"
                 >
                   Hardware Simulator
+                </Button>
+              </NextLink>
+
+              {/* Complexity Analysis Shortcut */}
+              <NextLink
+                href={`/visualize?mode=complexity`}
+                onClick={() => {
+                  try {
+                    sessionStorage.setItem("codevista_trace_source", sourceCode);
+                  } catch {
+                    // Ignore storage errors if private mode
+                  }
+                }}
+              >
+                <Button
+                  variant="outline"
+                  size="sm"
+                  leftIcon={<TrendingUp className="w-3.5 h-3.5 text-emerald-400" />}
+                  title="Analyze asymptotic time and space complexity and growth curves"
+                  className="hover:border-emerald-500/60 hover:text-emerald-300 transition-colors hidden xl:inline-flex"
+                >
+                  Complexity
                 </Button>
               </NextLink>
 

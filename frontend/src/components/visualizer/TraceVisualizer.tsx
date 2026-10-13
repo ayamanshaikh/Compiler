@@ -24,6 +24,7 @@ import {
   SlidersHorizontal,
   Repeat,
   Cpu,
+  TrendingUp,
 } from "lucide-react";
 import { TraceResponsePayload, TraceStep } from "@/lib/api/types";
 import { Button } from "@/components/ui/Button";
@@ -46,6 +47,7 @@ import { StateDiffInspector } from "./StateDiffInspector";
 import { ComplexityEstimatorCard } from "./ComplexityEstimatorCard";
 import { ExplanationTimeline } from "@/components/visualizer/explanation/ExplanationTimeline";
 import { HardwareSimulationVisualizer } from "@/components/visualizer/systems/HardwareSimulationVisualizer";
+import { InteractiveComplexityVisualizer } from "@/components/visualizer/complexity/InteractiveComplexityVisualizer";
 
 interface TraceVisualizerProps {
   trace: TraceResponsePayload;
@@ -57,7 +59,7 @@ export function TraceVisualizer({ trace, sourceCode }: TraceVisualizerProps) {
   const [currentStepIndex, setCurrentStepIndex] = useState<number>(0);
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
   const [speedMultiplier, setSpeedMultiplier] = useState<number>(1); // 0.5x, 1x, 2x
-  const [viewMode, setViewMode] = useState<"visual" | "systems" | "narrative">("visual");
+  const [viewMode, setViewMode] = useState<"visual" | "systems" | "complexity" | "narrative">("visual");
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
   const steps = useMemo(() => trace.steps || [], [trace.steps]);
@@ -377,6 +379,19 @@ export function TraceVisualizer({ trace, sourceCode }: TraceVisualizerProps) {
           </button>
           <button
             type="button"
+            onClick={() => setViewMode("complexity")}
+            className={`px-2.5 py-1 text-xs rounded font-medium flex items-center gap-1.5 transition-colors cursor-pointer ${
+              viewMode === "complexity"
+                ? "bg-emerald-600/25 text-emerald-300 border border-emerald-500/50 font-semibold"
+                : "text-zinc-400 hover:bg-zinc-800"
+            }`}
+            title="Asymptotic Time & Space Complexity Analysis"
+          >
+            <TrendingUp className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Complexity & Big-O</span>
+          </button>
+          <button
+            type="button"
             onClick={() => setViewMode("narrative")}
             className={`px-2.5 py-1 text-xs rounded font-medium flex items-center gap-1.5 transition-colors cursor-pointer ${
               viewMode === "narrative"
@@ -568,8 +583,14 @@ export function TraceVisualizer({ trace, sourceCode }: TraceVisualizerProps) {
         </div>
       )}
 
-      {/* View Mode Content: Systems Simulation vs Visual Inspector vs Step-by-Step Narrative */}
-      {viewMode === "systems" ? (
+      {/* View Mode Content: Complexity Analysis vs Systems Simulation vs Visual Inspector vs Step-by-Step Narrative */}
+      {viewMode === "complexity" ? (
+        <InteractiveComplexityVisualizer
+          steps={steps}
+          sourceCode={sourceCode}
+          executionDurationMs={trace.executionTimeMs}
+        />
+      ) : viewMode === "systems" ? (
         <HardwareSimulationVisualizer
           trace={trace}
           sourceCode={sourceCode}
@@ -731,7 +752,12 @@ export function TraceVisualizer({ trace, sourceCode }: TraceVisualizerProps) {
             </Card>
 
             {/* Asymptotic Complexity Profile */}
-            <ComplexityEstimatorCard steps={steps} sourceCode={sourceCode} />
+            <ComplexityEstimatorCard
+              steps={steps}
+              sourceCode={sourceCode}
+              executionDurationMs={trace.executionTimeMs}
+              onOpenFullAnalysis={() => setViewMode("complexity")}
+            />
           </div>
         </div>
       ) : (
