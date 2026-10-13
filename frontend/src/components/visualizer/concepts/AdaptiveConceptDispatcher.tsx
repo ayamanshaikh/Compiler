@@ -28,11 +28,19 @@ import { HelpCircle, Eye, ChevronDown, ChevronUp } from "lucide-react";
 interface AdaptiveConceptDispatcherProps {
   event: NormalizedExecutionEvent;
   sourceLines?: string[];
+  initialMode?: "beginner" | "detailed";
+  onModeChange?: (mode: "beginner" | "detailed") => void;
 }
 
-export function AdaptiveConceptDispatcher({ event, sourceLines }: AdaptiveConceptDispatcherProps) {
+export function AdaptiveConceptDispatcher({
+  event,
+  sourceLines,
+  initialMode,
+  onModeChange,
+}: AdaptiveConceptDispatcherProps) {
   const [showCompanionExplanation, setShowCompanionExplanation] = useState<boolean>(false);
   const decision = resolveVisualizationStrategy(event);
+  const effectiveInitialMode = initialMode || decision.suggestedDetailLevel || "beginner";
   const explanation = useMemo(
     () => buildStepExplanation(event, sourceLines),
     [event, sourceLines]
@@ -147,14 +155,24 @@ export function AdaptiveConceptDispatcher({ event, sourceLines }: AdaptiveConcep
 
               {showCompanionExplanation && (
                 <div className="mt-2">
-                  <StepExplanationCard explanation={explanation} compact />
+                  <StepExplanationCard
+                    explanation={explanation}
+                    compact
+                    initialMode={effectiveInitialMode}
+                    onModeChange={onModeChange}
+                  />
                 </div>
               )}
             </div>
           </>
         ) : (
           /* Mode B: Full Intentional Educational Step Card */
-          <StepExplanationCard explanation={explanation} defaultExpandedLearnMore />
+          <StepExplanationCard
+            explanation={explanation}
+            defaultExpandedLearnMore
+            initialMode={effectiveInitialMode}
+            onModeChange={onModeChange}
+          />
         )}
       </Card>
     </div>

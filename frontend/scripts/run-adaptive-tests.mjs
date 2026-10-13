@@ -139,6 +139,52 @@ test("Explanation Narrative and Fallback System Logic Verification", async (t) =
     assert.ok(detailed.stackHeapImplication.includes("call-stack"));
     assert.ok(detailed.compilerOrJvmReasoning.includes("Java compiler"));
   });
+
+  await t.test("Mode switching and detail-level fallback resolution", () => {
+    const explanation = {
+      whatHappens: "General statement.",
+      whyItHappens: "General why.",
+      result: "General result.",
+      beginnerMode: {
+        summary: "Simple beginner what happens.",
+        keyValues: "x = 10",
+        plainReason: "Simple beginner why.",
+        actionSummary: "Simple beginner result.",
+      },
+      detailedMode: {
+        technicalMechanics: "JVM iload/istore execution.",
+        runtimeScope: "Thread call stack frame 0.",
+        stackHeapImplication: "Local variable array slot.",
+        compilerOrJvmReasoning: "Bytecode verification.",
+      },
+    };
+
+    const getRenderedContent = (mode) => {
+      if (mode === "beginner") {
+        return {
+          primary: explanation.beginnerMode.summary,
+          reason: explanation.beginnerMode.plainReason,
+          result: explanation.beginnerMode.actionSummary,
+          badge: explanation.beginnerMode.keyValues,
+        };
+      } else {
+        return {
+          primary: explanation.detailedMode.technicalMechanics,
+          scope: explanation.detailedMode.runtimeScope,
+          memory: explanation.detailedMode.stackHeapImplication,
+          reason: explanation.detailedMode.compilerOrJvmReasoning,
+        };
+      }
+    };
+
+    const beginnerRender = getRenderedContent("beginner");
+    assert.equal(beginnerRender.primary, "Simple beginner what happens.");
+    assert.equal(beginnerRender.badge, "x = 10");
+
+    const detailedRender = getRenderedContent("detailed");
+    assert.equal(detailedRender.primary, "JVM iload/istore execution.");
+    assert.equal(detailedRender.memory, "Local variable array slot.");
+  });
 });
 
 test("Partial and Mixed Visualization Strategy Logic Verification", async (t) => {

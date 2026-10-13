@@ -5,13 +5,14 @@ import { NormalizedExecutionEvent } from "@/lib/api/types";
 import { buildStepExplanation } from "@/lib/visualizer/explanationBuilder";
 import { StepExplanationCard } from "./StepExplanationCard";
 import { Badge } from "@/components/ui/Badge";
-import { BookOpen, Search, Filter } from "lucide-react";
+import { BookOpen, Search, Filter, GraduationCap, Cpu } from "lucide-react";
 
 interface ExplanationTimelineProps {
   events: NormalizedExecutionEvent[];
   sourceCode: string;
   activeStepIndex: number;
   onSelectStep: (stepIndex: number) => void;
+  defaultMode?: "beginner" | "detailed";
 }
 
 export function ExplanationTimeline({
@@ -19,9 +20,11 @@ export function ExplanationTimeline({
   sourceCode,
   activeStepIndex,
   onSelectStep,
+  defaultMode = "beginner",
 }: ExplanationTimelineProps) {
   const [filterCategory, setFilterCategory] = useState<string>("ALL");
   const [searchQuery, setSearchQuery] = useState<string>("");
+  const [timelineMode, setTimelineMode] = useState<"beginner" | "detailed">(defaultMode);
 
   const sourceLines = useMemo(() => sourceCode.split(/\r?\n/), [sourceCode]);
 
@@ -66,7 +69,7 @@ export function ExplanationTimeline({
     <div className="flex flex-col gap-3 w-full">
       {/* Narrative Controls Header */}
       <div className="flex flex-wrap items-center justify-between gap-2 p-3 bg-zinc-900 border border-zinc-800 rounded-lg">
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <BookOpen className="w-4 h-4 text-accent" />
           <span className="text-xs font-bold text-zinc-200">
             Step-by-Step Execution Narrative
@@ -76,8 +79,44 @@ export function ExplanationTimeline({
           </Badge>
         </div>
 
-        {/* Search & Filter Bar */}
-        <div className="flex items-center gap-2">
+        {/* Global Timeline Mode & Filter Bar */}
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Timeline Mode Segmented Toggle */}
+          <div
+            role="group"
+            aria-label="Timeline explanation mode"
+            className="flex items-center gap-1 bg-zinc-950 p-0.5 rounded-lg border border-zinc-800 text-xs"
+          >
+            <button
+              type="button"
+              onClick={() => setTimelineMode("beginner")}
+              aria-pressed={timelineMode === "beginner"}
+              className={`flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium transition-all cursor-pointer ${
+                timelineMode === "beginner"
+                  ? "bg-accent/20 text-accent font-semibold shadow-sm"
+                  : "text-zinc-400 hover:text-zinc-200"
+              }`}
+              title="Set all cards to beginner mode"
+            >
+              <GraduationCap className="w-3.5 h-3.5" />
+              <span>Beginner</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setTimelineMode("detailed")}
+              aria-pressed={timelineMode === "detailed"}
+              className={`flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium transition-all cursor-pointer ${
+                timelineMode === "detailed"
+                  ? "bg-accent/20 text-accent font-semibold shadow-sm"
+                  : "text-zinc-400 hover:text-zinc-200"
+              }`}
+              title="Set all cards to detailed mode"
+            >
+              <Cpu className="w-3.5 h-3.5" />
+              <span>Detailed</span>
+            </button>
+          </div>
+
           <div className="relative flex items-center">
             <Search className="w-3.5 h-3.5 absolute left-2.5 text-zinc-500 pointer-events-none" />
             <input
@@ -85,7 +124,7 @@ export function ExplanationTimeline({
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search narrative..."
-              className="pl-8 pr-2.5 py-1 text-xs rounded bg-zinc-950 border border-zinc-800 text-zinc-200 focus:outline-none focus:border-accent w-36 sm:w-44 font-mono"
+              className="pl-8 pr-2.5 py-1 text-xs rounded bg-zinc-950 border border-zinc-800 text-zinc-200 focus:outline-none focus:border-accent w-32 sm:w-40 font-mono"
             />
           </div>
 
@@ -101,7 +140,7 @@ export function ExplanationTimeline({
               <button
                 key={f.id}
                 onClick={() => setFilterCategory(f.id)}
-                className={`px-2 py-0.5 text-xs rounded transition-colors font-mono ${
+                className={`px-2 py-0.5 text-xs rounded transition-colors font-mono cursor-pointer ${
                   filterCategory === f.id
                     ? "bg-accent/20 text-accent border border-accent/40 font-semibold"
                     : "text-zinc-400 hover:bg-zinc-800"
@@ -133,6 +172,7 @@ export function ExplanationTimeline({
                   explanation={exp}
                   compact={!isActive}
                   defaultExpandedLearnMore={isActive}
+                  initialMode={timelineMode}
                   className={isActive ? "border-accent/40" : ""}
                 />
               </div>
