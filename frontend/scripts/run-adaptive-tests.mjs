@@ -873,4 +873,50 @@ test("Compiler Pipeline Contract and Stage Data Model Verification", async (t) =
     assert.equal(line2Bytecode[0].opcode, "bipush");
     assert.equal(line2Bytecode[1].opcode, "istore_1");
   });
+
+  await t.test("Flags halting stage and grounds compiler diagnostic remediation on error", () => {
+    const failedPipelinePayload = {
+      success: false,
+      sourceCode: "public class Broken { int x = ; }",
+      className: "Broken",
+      stages: [
+        { stage: "SOURCE_CODE", status: "SUCCESS" },
+        { stage: "LEXICAL_ANALYSIS", status: "SUCCESS" },
+        { stage: "SYNTAX_ANALYSIS", status: "ERROR" },
+        { stage: "SYMBOL_RESOLUTION", status: "SUCCESS" },
+        { stage: "BYTECODE_DISASSEMBLY", status: "ERROR" },
+      ],
+      diagnostics: [
+        {
+          line: 1,
+          column: 32,
+          message: "';' expected",
+          diagnosticType: "SYNTAX_ERROR",
+          explanation: {
+            whyItHappened: "A statement ended without the mandatory closing semicolon.",
+            howToFix: "Insert a semicolon at the end of the assignment statement.",
+            suggestion: "int x = 0;",
+          },
+        },
+      ],
+      tokens: [],
+      astRoot: { id: "node-err", kind: "PARSE_ERROR" },
+      symbols: [],
+      bytecode: [],
+    };
+
+    assert.equal(failedPipelinePayload.success, false);
+    const haltingStages = failedPipelinePayload.stages.filter((s) => s.status === "ERROR");
+    assert.equal(haltingStages.length, 2);
+    assert.equal(haltingStages[0].stage, "SYNTAX_ANALYSIS");
+    assert.equal(haltingStages[1].stage, "BYTECODE_DISASSEMBLY");
+
+    const diag = failedPipelinePayload.diagnostics[0];
+    assert.equal(diag.line, 1);
+    assert.equal(diag.column, 32);
+    assert.equal(Boolean(diag.explanation), true);
+    assert.equal(diag.explanation.whyItHappened.includes("semicolon"), true);
+    assert.equal(diag.explanation.howToFix.includes("semicolon"), true);
+    assert.equal(diag.explanation.suggestion, "int x = 0;");
+  });
 });

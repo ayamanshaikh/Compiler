@@ -273,6 +273,67 @@ export function CompilerPipelineVisualizer({
         </Card>
       )}
 
+      {/* Diagnostics & Error Grounding Banner if compilation had issues */}
+      {pipelineData.diagnostics && pipelineData.diagnostics.length > 0 && (
+        <Card className="p-3 bg-rose-950/20 border-rose-800/60 flex flex-col gap-2">
+          <div className="flex items-center justify-between pb-1.5 border-b border-rose-900/40">
+            <div className="flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
+              <span className="text-xs font-bold text-rose-200">
+                Compiler Halting Stage & Diagnostics ({pipelineData.diagnostics.length})
+              </span>
+            </div>
+            <Badge variant="danger" size="sm">
+              Compilation Halted
+            </Badge>
+          </div>
+          <div className="space-y-2">
+            {pipelineData.diagnostics.map((diag, dIdx) => (
+              <div
+                key={dIdx}
+                onClick={() => {
+                  if (diag.line > 0) {
+                    setHighlightedLine(diag.line);
+                    onSelectSourceLine?.(diag.line);
+                  }
+                }}
+                className="p-2.5 rounded-lg bg-zinc-950 border border-rose-500/30 text-xs cursor-pointer hover:border-rose-500/60 transition-colors"
+                title={`Click to jump to Line ${diag.line}`}
+              >
+                <div className="flex items-center justify-between font-mono mb-1">
+                  <span className="text-rose-400 font-bold">
+                    Line {diag.line}:{diag.column}
+                  </span>
+                  <Badge variant="danger" size="sm">
+                    {diag.diagnosticType}
+                  </Badge>
+                </div>
+                <p className="font-mono text-zinc-200 text-xs mb-1.5">
+                  {diag.message}
+                </p>
+                {diag.explanation && (
+                  <div className="mt-1 p-2 rounded bg-zinc-900 border border-zinc-800 text-[11px] space-y-1">
+                    <div>
+                      <span className="text-zinc-400 font-medium">Why it happened: </span>
+                      <span className="text-zinc-300">{diag.explanation.whyItHappened}</span>
+                    </div>
+                    <div>
+                      <span className="text-emerald-400 font-medium">How to fix: </span>
+                      <span className="text-emerald-300">{diag.explanation.howToFix}</span>
+                    </div>
+                    {diag.explanation.suggestion && (
+                      <div className="p-1 rounded bg-emerald-950/30 border border-emerald-500/20 text-emerald-200 font-mono text-[10px]">
+                        {diag.explanation.suggestion}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
+
       {/* 3. Main Stage Content & Source Synchronization Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 items-start">
         {/* Left Column: Interactive Source Code Viewer */}
@@ -297,6 +358,7 @@ export function CompilerPipelineVisualizer({
             {sourceLines.map((lineText, idx) => {
               const lineNum = idx + 1;
               const isSelected = highlightedLine === lineNum;
+              const hasError = pipelineData.diagnostics?.some((d) => d.line === lineNum);
               return (
                 <div
                   key={lineNum}
@@ -304,11 +366,14 @@ export function CompilerPipelineVisualizer({
                   className={`flex items-start px-1.5 py-0.5 rounded cursor-pointer transition-colors ${
                     isSelected
                       ? "bg-accent/25 border-l-2 border-accent text-accent font-semibold"
+                      : hasError
+                      ? "bg-rose-950/20 border-l-2 border-rose-500 text-rose-200"
                       : "text-zinc-300 hover:bg-zinc-900/80"
                   }`}
                   title={`Click to filter tokens, AST, and bytecode for line ${lineNum}`}
                 >
-                  <span className="w-6 text-right text-zinc-600 select-none mr-3 shrink-0">
+                  <span className="w-6 text-right text-zinc-600 select-none mr-3 shrink-0 flex items-center justify-end gap-1">
+                    {hasError && <span className="w-1.5 h-1.5 rounded-full bg-rose-500 inline-block" />}
                     {lineNum}
                   </span>
                   <span className="whitespace-pre">{lineText || " "}</span>

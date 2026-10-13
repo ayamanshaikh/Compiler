@@ -37,8 +37,13 @@ public class JavaBytecodeDisassemblerService {
             boolean success,
             List<BytecodeInstructionDto> instructions,
             String rawOutput,
-            String error
-    ) {}
+            String error,
+            List<com.codevista.compiler.model.CompilerDiagnostic> diagnostics
+    ) {
+        public DisassemblyResult(boolean success, List<BytecodeInstructionDto> instructions, String rawOutput, String error) {
+            this(success, instructions, rawOutput, error, List.of());
+        }
+    }
 
     public JavaBytecodeDisassemblerService(JavaCompilerAdapter compilerAdapter) {
         this.compilerAdapter = compilerAdapter;
@@ -56,7 +61,7 @@ public class JavaBytecodeDisassemblerService {
             CompilationResult compRes = compilerAdapter.compileInto(tempDir, compReq);
 
             if (!compRes.isSuccess()) {
-                return new DisassemblyResult(false, List.of(), "", "Compilation failed: " + compRes.getOutput());
+                return new DisassemblyResult(false, List.of(), "", "Compilation failed: " + compRes.getOutput(), compRes.getDiagnostics());
             }
 
             String targetClass = compRes.getMainClass();

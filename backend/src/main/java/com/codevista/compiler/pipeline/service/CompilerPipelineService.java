@@ -107,15 +107,19 @@ public class CompilerPipelineService {
                 "OpenJDK javap Disassembler"
         ));
 
-        if (!bytecodeSuccess && disResult.error() != null) {
-            diagnostics.add(new CompilerDiagnostic(
-                    1,
-                    1,
-                    disResult.error(),
-                    "",
-                    "ERROR",
-                    "COMPILATION_ERROR"
-            ));
+        if (!bytecodeSuccess) {
+            if (disResult.diagnostics() != null && !disResult.diagnostics().isEmpty()) {
+                diagnostics.addAll(disResult.diagnostics());
+            } else if (disResult.error() != null) {
+                diagnostics.add(new CompilerDiagnostic(
+                        1,
+                        1,
+                        disResult.error(),
+                        "",
+                        "ERROR",
+                        "COMPILATION_ERROR"
+                ));
+            }
         }
 
         List<CompilerDiagnostic> enrichedDiagnostics = errorIntelligenceService.enrichDiagnostics(diagnostics);
