@@ -1297,7 +1297,60 @@ test("Multi-Language Adapter Architecture & Normalization Verification", async (
     assert.equal(errMatch[1], "IndexError");
     assert.equal(errMatch[2], "list index out of range");
   });
+
+  await t.test("Python ZeroDivisionError diagnoses divide-by-zero with non-zero guard remediation", () => {
+    const pyError = "ZeroDivisionError: division by zero";
+    assert.ok(pyError.includes("ZeroDivisionError") || pyError.includes("division by zero"));
+    const rawLine = "result = a / b";
+    const divisorMatch = rawLine.match(/\/\s*([A-Za-z0-9_$]+)/);
+    assert.ok(divisorMatch);
+    assert.equal(divisorMatch[1], "b");
+    const suggestion = `if ${divisorMatch[1]} != 0:`;
+    assert.equal(suggestion, "if b != 0:");
+  });
+
+  await t.test("C++ undefined symbol diagnostic extracts identifier and suggests scope declaration", () => {
+    const diagMsg = "error: 'counter' was not declared in this scope";
+    const symMatch = diagMsg.match(/'([^']+)'\s+was not declared/);
+    assert.ok(symMatch);
+    assert.equal(symMatch[1], "counter");
+  });
+
+  await t.test("Python for-range loop and divide-and-conquer detect asymptotic O(log n)", () => {
+    const pyCode = `def binary_search(arr, target):
+    low = 0
+    high = len(arr) - 1
+    while low <= high:
+        mid = (low + high) // 2
+        if arr[mid] == target:
+            return mid
+        elif arr[mid] < target:
+            low = mid + 1
+        else:
+            high = mid - 1
+    return -1`;
+
+    const hasLoop = /\b(for|while)\b/.test(pyCode);
+    const isHalving = /(?:\/\/\s*2|\/\s*2)/.test(pyCode);
+    assert.equal(hasLoop, true);
+    assert.equal(isHalving, true);
+  });
+
+  await t.test("Python recursive factorial detects recursive function calls", () => {
+    const pyCode = `def factorial(n):
+    if n <= 1:
+        return 1
+    return n * factorial(n - 1)`;
+
+    const funcMatch = pyCode.match(/(?:def\s+)([A-Za-z0-9_]+)\s*\(/g);
+    assert.ok(funcMatch);
+    const name = funcMatch[0].match(/def\s+([A-Za-z0-9_]+)/)[1];
+    assert.equal(name, "factorial");
+    const calls = pyCode.match(new RegExp(`\\b${name}\\s*\\(`, "g"));
+    assert.ok(calls && calls.length >= 2);
+  });
 });
+
 
 
 

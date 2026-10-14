@@ -213,7 +213,8 @@ export function analyzeProgramComplexity(
   // Loop detection
   const loopLines: number[] = [];
   lines.forEach((lineText, idx) => {
-    if (/\b(for|while|do)\b/.test(lineText) && !lineText.trim().startsWith("//")) {
+    const trimmed = lineText.trim();
+    if (/\b(for|while|do)\b/.test(lineText) && !trimmed.startsWith("//") && !trimmed.startsWith("#") && !trimmed.startsWith("/*")) {
       loopLines.push(idx + 1);
     }
   });
@@ -236,7 +237,8 @@ export function analyzeProgramComplexity(
   let hasEarlyExit = false;
   const earlyExitLines: number[] = [];
   lines.forEach((lineText, idx) => {
-    if (/\b(break|return)\b/.test(lineText) && loopLines.length > 0 && !lineText.trim().startsWith("//")) {
+    const trimmed = lineText.trim();
+    if (/\b(break|return)\b/.test(lineText) && loopLines.length > 0 && !trimmed.startsWith("//") && !trimmed.startsWith("#")) {
       hasEarlyExit = true;
       earlyExitLines.push(idx + 1);
     }
@@ -244,29 +246,37 @@ export function analyzeProgramComplexity(
 
   // Detect Divide and Conquer (Binary Search or halving)
   const isDivideAndConquer =
-    /\b(\/\s*2|>>\s*1|\bmid\b|binarySearch)\b/i.test(sourceCode) && loopLines.length > 0;
+    /(?:\/\/\s*2|\/\s*2|>>\s*1|\bmid\b|\bbinarySearch\b|\bbinary_search\b)/i.test(sourceCode) && loopLines.length > 0;
 
-  // Detect Dynamic Heap Allocations (new int[], new Object, new ArrayList)
+  // Detect Dynamic Heap Allocations (Java new, C malloc, Python list append)
   const allocationLines: number[] = [];
   let hasArrayAllocation = false;
   lines.forEach((lineText, idx) => {
-    if (/\bnew\s+[A-Za-z0-9_]+(\[|\()/.test(lineText) && !lineText.trim().startsWith("//")) {
+    const trimmed = lineText.trim();
+    if (
+      (/\bnew\s+[A-Za-z0-9_]+(\[|\()/.test(lineText) ||
+       /\bmalloc\s*\(/.test(lineText) ||
+       /\bappend\b/.test(lineText) ||
+       /=\s*\[\s*\]/.test(lineText)) &&
+      !trimmed.startsWith("//") &&
+      !trimmed.startsWith("#")
+    ) {
       allocationLines.push(idx + 1);
-      if (/new\s+[A-Za-z0-9_]+\[/.test(lineText)) {
+      if (/new\s+[A-Za-z0-9_]+\[/.test(lineText) || /=\s*\[\s*\]/.test(lineText) || /\bmalloc\b/.test(lineText)) {
         hasArrayAllocation = true;
       }
     }
   });
 
   // Detect Recursion
-  // Check for method names calling themselves
-  const methodMatch = sourceCode.match(/(?:public|private|static)\s+[A-Za-z0-9_<>[\]]+\s+([A-Za-z0-9_]+)\s*\(/g);
+  // Check for method/function names calling themselves across Java, Python, and C/C++
+  const funcMatch = sourceCode.match(/(?:(?:def|(?:public|private|static)\s+[A-Za-z0-9_<>[\]]+|[A-Za-z0-9_]+\s*\*\s*|[A-Za-z0-9_]+)\s+([A-Za-z0-9_]+)\s*\()/g);
   let isSyntacticRecursion = false;
   let recursiveMethodName = "";
-  if (methodMatch) {
-    for (const m of methodMatch) {
+  if (funcMatch) {
+    for (const m of funcMatch) {
       const nameMatch = m.match(/\s+([A-Za-z0-9_]+)\s*\(/);
-      if (nameMatch && nameMatch[1] && nameMatch[1] !== "main") {
+      if (nameMatch && nameMatch[1] && nameMatch[1] !== "main" && nameMatch[1] !== "print" && nameMatch[1] !== "range") {
         const candidateName = nameMatch[1];
         // Count occurrences of candidateName( in source code
         const regex = new RegExp(`\\b${candidateName}\\s*\\(`, "g");

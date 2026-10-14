@@ -125,6 +125,45 @@ export function diagnoseCompilerError(
     rootCause = msg;
     remediationSteps.push("Examine the types of both the left-hand variable and right-hand expression.");
     remediationSteps.push("Use an explicit type cast e.g. (int) value if intentional.");
+  } else if (lowerMsg.includes("syntaxerror") || lowerMsg.includes("indentationerror")) {
+    category = "COMPILER_SYNTAX";
+    expectedContract = "Python statements must conform to PEP 8 grammar and indentation";
+    summary = lowerMsg.includes("indentationerror")
+      ? "Python requires consistent indentation (usually 4 spaces) to define code blocks."
+      : "Python could not parse this line because of invalid syntax.";
+    analogy = "Like a paragraph with a sudden random indentation that doesn't belong to any list.";
+    whyItHappened = "Python does not use curly braces '{}'; it uses whitespace indentation to know which statements belong inside loops, conditions, or functions.";
+    howToFix = "Ensure indentation is consistent (4 spaces) and keywords/colons ':' are placed properly.";
+    jvmSpec = "CPython Parser: Tokenizer detected indentation mismatch or invalid grammar production.";
+    rootCause = primary.message;
+    remediationSteps.push("Verify indentation levels match previous lines in the same block.");
+    remediationSteps.push("Check that statement headers (if, for, while, def) end with a colon ':'.");
+  } else if (lowerMsg.includes("was not declared in this scope")) {
+    category = "COMPILER_SYMBOL";
+    const symMatch = msg.match(/'([^']+)'\s+was not declared/);
+    const sym = symMatch ? symMatch[1] : "identifier";
+    expectedContract = `Identifier '${sym}' must be declared with a type before use`;
+    summary = `C/C++ compiler cannot find a declaration for '${sym}'.`;
+    analogy = "Calling a phone number that hasn't been saved in your contacts yet.";
+    whyItHappened = "C and C++ require all variables and functions to be declared before they are called.";
+    howToFix = `Declare '${sym}' with its type (e.g. 'int ${sym};') or include the required header file.`;
+    jvmSpec = "ISO C++ §6.2: Identification of unqualified names via lookup in declarative regions.";
+    rootCause = `Unresolved symbol '${sym}' in current lexical scope.`;
+    remediationSteps.push(`Declare '${sym}' before using it.`);
+    remediationSteps.push("Verify any required #include header is present at the top of the file.");
+  } else if (lowerMsg.includes("expected ';'") || lowerMsg.includes("expected ';' before")) {
+    category = "COMPILER_SYNTAX";
+    expectedContract = "Statement in C/C++ must terminate with ';'";
+    summary = "A semicolon ';' is missing before the next token.";
+    analogy = "Like a sentence missing a closing period in an essay.";
+    whyItHappened = "C and C++ grammar requires an explicit ';' to mark the boundary of simple statements.";
+    howToFix = "Add a semicolon ';' to the end of the line.";
+    jvmSpec = "ISO C §6.8: An expression statement consists of an optional expression followed by a semicolon ';'.";
+    rootCause = "Missing statement terminator ';'.";
+    remediationSteps.push("Append ';' at the end of the statement.");
+    if (!rawLine.trim().endsWith(";")) {
+      correctedLine = rawLine.trimEnd() + ";";
+    }
   } else if (primary.explanation) {
     summary = primary.explanation.simpleExplanation;
     whyItHappened = primary.explanation.whyItHappened;
@@ -267,6 +306,74 @@ export function diagnoseRuntimeError(
     rootCause = "Unbounded or infinite recursion without base case convergence.";
     remediationSteps.push("Check that the method has a termination condition (base case).");
     remediationSteps.push("Check that the recursive parameter decreases or moves toward the base case.");
+  } else if (exClass.includes("ZeroDivisionError") || exDetail.includes("division by zero")) {
+    category = "RUNTIME_ARITHMETIC";
+    expectedContract = "Divisor operand must be non-zero (divisor != 0)";
+    summary = "The code attempted to divide by zero in Python.";
+    analogy = "Trying to distribute books among zero students—it cannot be done mathematically.";
+    whyItHappened = "Python does not allow integer or floating-point division by zero and raises ZeroDivisionError immediately.";
+    howToFix = "Ensure the denominator is not zero before dividing or use an 'if divisor != 0:' check.";
+    jvmSpec = "CPython: PyEval_EvalFrameDefault encountered BINARY_OP / with rhs 0 and raised ZeroDivisionError.";
+    rootCause = "Python division by zero.";
+    remediationSteps.push("Verify the value of the divisor before division.");
+    remediationSteps.push("Add a guard check 'if divisor != 0:' in Python.");
+  } else if (exClass.includes("IndexError") || exDetail.includes("list index out of range")) {
+    category = "RUNTIME_INDEX_OUT_OF_BOUNDS";
+    expectedContract = "List index must be within range 0 <= index < len(sequence)";
+    summary = "Attempted to access an index that does not exist in the list.";
+    analogy = "Looking for apartment #10 in a building with only 5 apartments.";
+    whyItHappened = "Python lists are 0-indexed. An index greater than or equal to len(list) raises IndexError.";
+    howToFix = "Ensure your index is less than len(list), or iterate directly using 'for item in list:'.";
+    jvmSpec = "CPython PyList_GetItem: index >= PyList_GET_SIZE(listref) bounds check failure.";
+    rootCause = "List index out of range.";
+    remediationSteps.push("Check that the index is strictly less than len(list).");
+    remediationSteps.push("Consider iterating directly over items using 'for x in list:'.");
+  } else if (exClass.includes("NameError") || exDetail.includes("is not defined")) {
+    category = "COMPILER_SYMBOL";
+    const nameMatch = exDetail.match(/name '([^']+)' is not defined/);
+    const sym = nameMatch ? nameMatch[1] : "variable";
+    expectedContract = `Variable '${sym}' must be assigned before being referenced`;
+    summary = `The name '${sym}' has not been assigned a value yet.`;
+    analogy = "Trying to open a package that hasn't arrived yet.";
+    whyItHappened = `Python looked up '${sym}' in the local and global namespaces, but no object is bound to that name.`;
+    howToFix = `Assign a value to '${sym}' (e.g. '${sym} = 0') before using it.`;
+    jvmSpec = "CPython: LOAD_NAME/LOAD_FAST failed to resolve identifier in f_locals or f_globals dict.";
+    rootCause = `Unbound variable name '${sym}'.`;
+    remediationSteps.push(`Define '${sym}' before referencing it.`);
+    remediationSteps.push(`Check for typos in '${sym}' (Python is case-sensitive).`);
+  } else if (exClass.includes("TypeError") || exDetail.includes("unsupported operand type")) {
+    category = "COMPILER_TYPE";
+    expectedContract = "Operands must have compatible types for the applied operator";
+    summary = "An operator was applied to data types that don't support it (e.g. adding a string to an integer).";
+    analogy = "Trying to add 5 apples to 'blue'.";
+    whyItHappened = "Python is strongly typed. Even though variables don't require type declarations, Python refuses to perform unsupported operations between mismatched types.";
+    howToFix = "Convert the types explicitly, for example with int(x) or str(x).";
+    jvmSpec = "CPython: Type slot nb_add returned Py_NotImplemented for operand types.";
+    rootCause = exDetail || "Type mismatch in Python expression.";
+    remediationSteps.push("Check the types of the variables involved using type(x).");
+    remediationSteps.push("Use explicit type casting: str(num) or int(text).");
+  } else if (exClass.includes("RecursionError") || exDetail.includes("maximum recursion depth")) {
+    category = "RUNTIME_STACK_OVERFLOW";
+    expectedContract = "Recursion depth must not exceed sys.getrecursionlimit() (default 1000)";
+    summary = "The function called itself repeatedly without reaching a stopping base case.";
+    analogy = "Two mirrors facing each other creating an endless tunnel of reflections.";
+    whyItHappened = "Python limits recursive calls to prevent system stack overflow. When a function recurses infinitely, Python stops it with RecursionError.";
+    howToFix = "Add a stopping condition 'if n <= 1: return ...' at the very beginning of the function.";
+    jvmSpec = "CPython: Py_EnterRecursiveCall reached recursion limit.";
+    rootCause = "Infinite or excessively deep recursion without base case convergence.";
+    remediationSteps.push("Ensure your function has a base case return statement.");
+    remediationSteps.push("Ensure each recursive call moves arguments closer to the base case.");
+  } else if (exDetail.includes("Segmentation fault") || exDetail.includes("SIGSEGV") || exDetail.includes("core dumped")) {
+    category = "RUNTIME_NULL_POINTER";
+    expectedContract = "Pointers must reference valid, allocated virtual memory addresses";
+    summary = "Segmentation Fault (SIGSEGV): The program tried to access restricted or unmapped memory.";
+    analogy = "Trying to enter a room in a building that doesn't exist, or using a key on a locked door you don't own.";
+    whyItHappened = "A pointer was dereferenced while pointing to NULL (0x0), an uninitialized address, or already freed memory.";
+    howToFix = "Check that the pointer is not NULL ('if (ptr != nullptr)') and that array indices stay within allocated bounds.";
+    jvmSpec = "POSIX / x86-64 MMU: Hardware page fault triggered SIGSEGV signal (invalid memory access).";
+    rootCause = "Illegal memory dereference (NULL pointer or dangling pointer).";
+    remediationSteps.push("Check for nullptr before dereferencing: if (ptr != nullptr) { ... }");
+    remediationSteps.push("Ensure dynamic buffers allocated with new/malloc are not accessed after delete/free.");
   }
 
   const correctedSourceCode = applyRemediationFix(sourceCode, correctedLine, failingLine);
