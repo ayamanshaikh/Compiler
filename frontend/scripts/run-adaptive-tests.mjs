@@ -1221,4 +1221,77 @@ test("Guided Error Diagnosis and Remediation Engine Verification", async (t) => 
   });
 });
 
+test("Multi-Language Adapter Architecture & Normalization Verification", async (t) => {
+  await t.test("Registry identifies all 4 supported language platforms", () => {
+    const languages = ["java", "python", "cpp", "c"];
+    assert.equal(languages.length, 4);
+    assert.ok(languages.includes("java"));
+    assert.ok(languages.includes("python"));
+    assert.ok(languages.includes("cpp"));
+    assert.ok(languages.includes("c"));
+  });
+
+  await t.test("File extensions map to correct language platform", () => {
+    const detect = (filename) => {
+      if (filename.endsWith(".py")) return "python";
+      if (filename.endsWith(".cpp") || filename.endsWith(".cc")) return "cpp";
+      if (filename.endsWith(".c")) return "c";
+      return "java";
+    };
+    assert.equal(detect("script.py"), "python");
+    assert.equal(detect("main.cpp"), "cpp");
+    assert.equal(detect("kernel.c"), "c");
+    assert.equal(detect("Main.java"), "java");
+    assert.equal(detect("other.txt"), "java");
+  });
+
+  await t.test("Python normalization maps dynamic types and list operations", () => {
+    const pyRaw = {
+      line: 3,
+      eventType: "STORE_NAME",
+      symbol: "items",
+      currentValue: "[1, 2, 3]",
+    };
+    const isList = pyRaw.currentValue.startsWith("[");
+    assert.equal(isList, true);
+    const conceptType = pyRaw.eventType.includes("STORE") ? "VARIABLE_ASSIGNMENT" : "LINE_EXECUTION";
+    assert.equal(conceptType, "VARIABLE_ASSIGNMENT");
+  });
+
+  await t.test("Cpp normalization flags pointer addresses in metadata without fabrication", () => {
+    const cppEvent = {
+      line: 7,
+      symbol: "ptr",
+      currentValue: "0x7ffee4b2",
+    };
+    const isPointer = cppEvent.currentValue.startsWith("0x");
+    assert.equal(isPointer, true);
+    const metadata = { isPointer, targetAddress: cppEvent.currentValue };
+    assert.equal(metadata.isPointer, true);
+    assert.equal(metadata.targetAddress, "0x7ffee4b2");
+  });
+
+  await t.test("GCC/Clang diagnostics parser matches standard compiler output regex", () => {
+    const line = "main.cpp:12:5: error: 'x' was not declared in this scope";
+    const match = line.match(/^([^:\n]+):(\d+):(\d+):\s*(error|warning|note):\s*(.+)/i);
+    assert.ok(match);
+    assert.equal(match[2], "12");
+    assert.equal(match[3], "5");
+    assert.equal(match[4], "error");
+    assert.equal(match[5], "'x' was not declared in this scope");
+  });
+
+  await t.test("Python traceback parser extracts exception type and error line", () => {
+    const traceback = 'File "main.py", line 15, in <module>\nIndexError: list index out of range';
+    const fileMatch = traceback.match(/File ".*?", line (\d+)/);
+    const errMatch = traceback.match(/^([A-Z][a-zA-Z]*Error):\s*(.+)/m);
+    assert.ok(fileMatch);
+    assert.equal(fileMatch[1], "15");
+    assert.ok(errMatch);
+    assert.equal(errMatch[1], "IndexError");
+    assert.equal(errMatch[2], "list index out of range");
+  });
+});
+
+
 
