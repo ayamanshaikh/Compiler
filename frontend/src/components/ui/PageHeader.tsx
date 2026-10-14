@@ -21,11 +21,11 @@ export function PageHeader({
     <div
       className={`flex flex-col md:flex-row md:items-center md:justify-between gap-4 pb-6 border-b border-zinc-800/80 mb-6 ${className}`}
     >
-      <div className="space-y-1.5">
+      <div className="space-y-1.5 min-w-0">
         {breadcrumbs && (
           <div className="text-xs text-zinc-500 mb-1">{breadcrumbs}</div>
         )}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 flex-wrap">
           <h1 className="text-2xl font-bold tracking-tight text-zinc-100">
             {title}
           </h1>
@@ -39,7 +39,7 @@ export function PageHeader({
       </div>
 
       {actions && (
-        <div className="flex items-center gap-2.5 shrink-0">{actions}</div>
+        <div className="flex items-center gap-2.5 flex-wrap min-w-0">{actions}</div>
       )}
     </div>
   );

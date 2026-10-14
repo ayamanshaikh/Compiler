@@ -3,7 +3,6 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import NextLink from "next/link";
 import { AppShell } from "@/components/layout/AppShell";
-import { PageHeader } from "@/components/ui/PageHeader";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { useAuth } from "@/lib/context/AuthContext";
@@ -70,8 +69,9 @@ export default function WorkspacePage() {
   const [activeTab, setActiveTab] = useState<"stdout" | "stdin" | "diagnostics" | "pipeline">("stdout");
   const [errorStatus, setErrorStatus] = useState<string | null>(null);
 
+  const currentAdapter = languageRegistry.get(language);
+
   const handleLanguageChange = (newLang: LanguageId) => {
-    const currentAdapter = languageRegistry.get(language);
     const newAdapter = languageRegistry.get(newLang);
     if (
       sourceCode.trim() === currentAdapter.getDefaultCode().trim() ||
@@ -87,6 +87,7 @@ export default function WorkspacePage() {
   };
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const gutterRef = useRef<HTMLDivElement>(null);
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   // Line wrapping and minimap settings from user preferences
@@ -207,13 +208,14 @@ export default function WorkspacePage() {
   }, [allDiagnostics, executionResult?.runtimeError, sourceCode]);
 
   return (
-    <AppShell>
-      <div className="p-4 sm:p-6 lg:p-8 flex flex-col h-[calc(100vh-3.5rem)] overflow-hidden">
-        {/* Workspace Toolbar Header */}
-        <PageHeader
-          title="IDE Workspace"
-          description="Interactive Java compilation, step tracing, and diagnostic analysis."
-          badge={
+    <AppShell showFooter={false}>
+      <div className="p-3 sm:p-4 lg:p-5 flex flex-col min-h-[calc(100vh-3.5rem)] h-auto lg:h-[calc(100vh-3.5rem)] overflow-y-auto lg:overflow-hidden min-w-0 w-full max-w-full">
+        {/* Workspace Title & Status Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pb-2.5 border-b border-zinc-800/80 mb-2.5 shrink-0 min-w-0">
+          <div className="flex items-center gap-2.5 flex-wrap min-w-0">
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-zinc-100">
+              IDE Workspace
+            </h1>
             <Badge
               variant={
                 isRunning
@@ -233,169 +235,186 @@ export default function WorkspacePage() {
                 ? "Success"
                 : "Ready"}
             </Badge>
-          }
-          actions={
-            <div className="flex items-center gap-2">
-              <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-zinc-800 bg-zinc-900 text-xs font-mono text-zinc-400">
-                <Cpu className="w-3.5 h-3.5 text-accent" />
-                <span>Java 25 (OpenJDK)</span>
-              </div>
+            <span className="hidden md:inline-block text-xs text-zinc-400 truncate max-w-md">
+              Interactive compilation, execution tracing, and systems analysis.
+            </span>
+          </div>
 
-              {/* Step Trace Shortcut */}
-              <NextLink
-                href={`/visualize?mode=trace`}
-                onClick={() => {
-                  try {
-                    sessionStorage.setItem("codevista_trace_source", sourceCode);
-                  } catch {
-                    // Ignore storage errors if private mode
-                  }
-                }}
-              >
-                <Button
-                  variant="outline"
-                  size="sm"
-                  leftIcon={<Layers className="w-3.5 h-3.5 text-accent" />}
-                  title="Visualize execution trace of current code in Adaptive Engine"
-                  className="hover:border-accent/60 hover:text-accent transition-colors"
-                >
-                  Visualize Trace
-                </Button>
-              </NextLink>
-
-              {/* Compiler Pipeline Explorer Shortcut */}
-              <NextLink
-                href={`/visualize?mode=compiler`}
-                onClick={() => {
-                  try {
-                    sessionStorage.setItem("codevista_trace_source", sourceCode);
-                  } catch {
-                    // Ignore storage errors if private mode
-                  }
-                }}
-              >
-                <Button
-                  variant="outline"
-                  size="sm"
-                  leftIcon={<GitFork className="w-3.5 h-3.5 text-indigo-400" />}
-                  title="Explore compiler pipeline stages (Tokens, AST, Symbols, Bytecode)"
-                  className="hover:border-indigo-500/60 hover:text-indigo-300 transition-colors hidden md:inline-flex"
-                >
-                  Compiler Pipeline
-                </Button>
-              </NextLink>
-
-              {/* Hardware Simulator Shortcut */}
-              <NextLink
-                href={`/visualize?mode=systems`}
-                onClick={() => {
-                  try {
-                    sessionStorage.setItem("codevista_trace_source", sourceCode);
-                  } catch {
-                    // Ignore storage errors if private mode
-                  }
-                }}
-              >
-                <Button
-                  variant="outline"
-                  size="sm"
-                  leftIcon={<Cpu className="w-3.5 h-3.5 text-indigo-400" />}
-                  title="Simulate CPU cycles, registers, operand stack, and heap layout"
-                  className="hover:border-indigo-500/60 hover:text-indigo-300 transition-colors hidden lg:inline-flex"
-                >
-                  Hardware Simulator
-                </Button>
-              </NextLink>
-
-              {/* Complexity Analysis Shortcut */}
-              <NextLink
-                href={`/visualize?mode=complexity`}
-                onClick={() => {
-                  try {
-                    sessionStorage.setItem("codevista_trace_source", sourceCode);
-                  } catch {
-                    // Ignore storage errors if private mode
-                  }
-                }}
-              >
-                <Button
-                  variant="outline"
-                  size="sm"
-                  leftIcon={<TrendingUp className="w-3.5 h-3.5 text-emerald-400" />}
-                  title="Analyze asymptotic time and space complexity and growth curves"
-                  className="hover:border-emerald-500/60 hover:text-emerald-300 transition-colors hidden xl:inline-flex"
-                >
-                  Complexity
-                </Button>
-              </NextLink>
-
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={handleReset}
-                leftIcon={<RotateCcw className="w-3.5 h-3.5" />}
-              >
-                Reset
-              </Button>
-
-              <Button
-                variant="primary"
-                size="sm"
-                onClick={handleRun}
-                disabled={isRunning}
-                isLoading={isRunning}
-                leftIcon={<Play className="w-3.5 h-3.5 fill-current" />}
-              >
-                Run Code
-              </Button>
+          <div className="flex items-center gap-2 shrink-0">
+            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-zinc-800 bg-zinc-900/80 text-[11px] font-mono text-zinc-300">
+              <Cpu className="w-3.5 h-3.5 text-accent" />
+              <span>{currentAdapter.name} {currentAdapter.version}</span>
             </div>
-          }
-        />
+          </div>
+        </div>
+
+        {/* Dedicated Responsive Workspace Action Toolbar */}
+        <div className="flex flex-wrap items-center justify-between gap-2 bg-zinc-900/70 border border-zinc-800/80 rounded-xl p-2 mb-3 shrink-0 min-w-0">
+          {/* Left Controls: Language Selector & Feature Shortcuts */}
+          <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap min-w-0">
+            {/* Language Selector */}
+            <div className="flex items-center gap-0.5 bg-zinc-950 p-0.5 rounded-lg border border-zinc-800 shrink-0">
+              {(["java", "python", "cpp", "c"] as const).map((langId) => {
+                const adapter = languageRegistry.get(langId);
+                const isActive = language === langId;
+                return (
+                  <button
+                    key={langId}
+                    type="button"
+                    onClick={() => handleLanguageChange(langId)}
+                    className={`px-2 sm:px-2.5 py-1 rounded text-xs font-mono transition-all cursor-pointer ${
+                      isActive
+                        ? "bg-accent/20 text-accent font-semibold border border-accent/50 shadow-xs"
+                        : "text-zinc-400 hover:text-zinc-200 hover:bg-zinc-850"
+                    }`}
+                    title={`Switch workspace language to ${adapter.name}`}
+                  >
+                    {adapter.name}
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="hidden sm:block h-4 w-px bg-zinc-800 shrink-0" />
+
+            {/* Step Trace Shortcut */}
+            <NextLink
+              href={`/visualize?mode=trace`}
+              onClick={() => {
+                try {
+                  sessionStorage.setItem("codevista_trace_source", sourceCode);
+                } catch {
+                  // Ignore storage errors if private mode
+                }
+              }}
+            >
+              <Button
+                variant="outline"
+                size="sm"
+                leftIcon={<Layers className="w-3.5 h-3.5 text-accent" />}
+                title="Visualize execution trace of current code in Adaptive Engine"
+                className="hover:border-accent/60 hover:text-accent transition-colors"
+              >
+                <span className="hidden sm:inline">Visualize </span>Trace
+              </Button>
+            </NextLink>
+
+            {/* Compiler Pipeline Explorer Shortcut */}
+            <NextLink
+              href={`/visualize?mode=compiler`}
+              onClick={() => {
+                try {
+                  sessionStorage.setItem("codevista_trace_source", sourceCode);
+                } catch {
+                  // Ignore storage errors if private mode
+                }
+              }}
+            >
+              <Button
+                variant="outline"
+                size="sm"
+                leftIcon={<GitFork className="w-3.5 h-3.5 text-indigo-400" />}
+                title="Explore compiler pipeline stages (Tokens, AST, Symbols, Bytecode)"
+                className="hover:border-indigo-500/60 hover:text-indigo-300 transition-colors"
+              >
+                <span className="hidden sm:inline">Compiler </span>Pipeline
+              </Button>
+            </NextLink>
+
+            {/* Hardware Simulator Shortcut */}
+            <NextLink
+              href={`/visualize?mode=systems`}
+              onClick={() => {
+                try {
+                  sessionStorage.setItem("codevista_trace_source", sourceCode);
+                } catch {
+                  // Ignore storage errors if private mode
+                }
+              }}
+            >
+              <Button
+                variant="outline"
+                size="sm"
+                leftIcon={<Cpu className="w-3.5 h-3.5 text-indigo-400" />}
+                title="Simulate CPU cycles, registers, operand stack, and heap layout"
+                className="hover:border-indigo-500/60 hover:text-indigo-300 transition-colors"
+              >
+                <span className="hidden md:inline">Hardware </span>Simulator
+              </Button>
+            </NextLink>
+
+            {/* Complexity Analysis Shortcut */}
+            <NextLink
+              href={`/visualize?mode=complexity`}
+              onClick={() => {
+                try {
+                  sessionStorage.setItem("codevista_trace_source", sourceCode);
+                } catch {
+                  // Ignore storage errors if private mode
+                }
+              }}
+            >
+              <Button
+                variant="outline"
+                size="sm"
+                leftIcon={<TrendingUp className="w-3.5 h-3.5 text-emerald-400" />}
+                title="Analyze asymptotic time and space complexity and growth curves"
+                className="hover:border-emerald-500/60 hover:text-emerald-300 transition-colors"
+              >
+                Complexity
+              </Button>
+            </NextLink>
+          </div>
+
+          {/* Right Execution Actions: Reset & Run Code */}
+          <div className="flex items-center gap-2 ml-auto shrink-0">
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={handleReset}
+              leftIcon={<RotateCcw className="w-3.5 h-3.5" />}
+              title="Reset code to default template"
+            >
+              Reset
+            </Button>
+
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={handleRun}
+              disabled={isRunning}
+              isLoading={isRunning}
+              leftIcon={<Play className="w-3.5 h-3.5 fill-current" />}
+              title="Compile and run code"
+              className="font-semibold shadow-xs shrink-0"
+            >
+              Run Code
+            </Button>
+          </div>
+        </div>
 
         {/* Workspace Multi-Panel Layout */}
-        <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-4 min-h-0 overflow-hidden">
+        <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-3 sm:gap-4 min-h-0 min-w-0">
           {/* Main Editor Panel */}
-          <div className="lg:col-span-8 flex flex-col rounded-xl border border-zinc-800 bg-zinc-950/80 overflow-hidden shadow-xs">
+          <div className="lg:col-span-8 flex flex-col rounded-xl border border-zinc-800 bg-zinc-950/80 overflow-hidden shadow-xs min-w-0 min-h-[380px] lg:min-h-0">
             {/* Editor Sub-Header */}
-            <div className="flex items-center justify-between px-4 py-2 border-b border-zinc-800 bg-zinc-900/60 text-xs font-mono text-zinc-400">
-              <div className="flex items-center gap-2.5 flex-wrap">
-                <div className="flex items-center gap-1 bg-zinc-950 p-0.5 rounded-lg border border-zinc-800">
-                  {(["java", "python", "cpp", "c"] as const).map((langId) => {
-                    const adapter = languageRegistry.get(langId);
-                    const isActive = language === langId;
-                    return (
-                      <button
-                        key={langId}
-                        type="button"
-                        onClick={() => handleLanguageChange(langId)}
-                        className={`px-2 py-0.5 rounded text-[11px] font-mono transition-all cursor-pointer ${
-                          isActive
-                            ? "bg-accent/20 text-accent font-semibold border border-accent/50 shadow-xs"
-                            : "text-zinc-400 hover:text-zinc-200 hover:bg-zinc-850"
-                        }`}
-                      >
-                        {adapter.name}
-                      </button>
-                    );
-                  })}
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <FileCode className="w-3.5 h-3.5 text-accent" />
-                  <span className="text-zinc-200 font-medium font-mono text-[11px]">
-                    {language === "java"
-                      ? "Main.java"
-                      : language === "python"
-                      ? "main.py"
-                      : language === "cpp"
-                      ? "main.cpp"
-                      : "main.c"}
-                  </span>
-                  <span className="text-[11px] text-zinc-500">• {lineCount} lines</span>
-                </div>
+            <div className="flex items-center justify-between px-3 sm:px-4 py-2 border-b border-zinc-800 bg-zinc-900/60 text-xs font-mono text-zinc-400 gap-2 flex-wrap min-w-0">
+              <div className="flex items-center gap-2 min-w-0">
+                <FileCode className="w-3.5 h-3.5 text-accent shrink-0" />
+                <span className="text-zinc-200 font-medium font-mono text-[11px] truncate">
+                  {language === "java"
+                    ? "Main.java"
+                    : language === "python"
+                    ? "main.py"
+                    : language === "cpp"
+                    ? "main.cpp"
+                    : "main.c"}
+                </span>
+                <span className="text-[11px] text-zinc-500 whitespace-nowrap">• {lineCount} lines</span>
               </div>
 
               {/* Editor Toggles / Info */}
-              <div className="flex items-center gap-3 text-[11px]">
+              <div className="flex items-center gap-2.5 sm:gap-3 text-[11px] shrink-0 ml-auto">
                 <button
                   type="button"
                   onClick={() => updatePreferences({ lineWrapping: !isLineWrapping })}
@@ -420,16 +439,19 @@ export default function WorkspacePage() {
                   <span>Minimap</span>
                 </button>
 
-                <span className="text-zinc-600">|</span>
-                <span className="text-zinc-500 font-mono">{fontSize}px</span>
-                <span className="text-zinc-500 font-mono">Tab: {tabSize}</span>
+                <span className="text-zinc-600 hidden sm:inline">|</span>
+                <span className="text-zinc-500 font-mono hidden sm:inline">{fontSize}px</span>
+                <span className="text-zinc-500 font-mono hidden sm:inline">Tab: {tabSize}</span>
               </div>
             </div>
 
             {/* Editor Surface */}
-            <div className="flex-1 flex overflow-hidden bg-zinc-950">
+            <div className="flex-1 flex overflow-hidden bg-zinc-950 min-h-0 min-w-0">
               {/* Line Numbers Gutter */}
-              <div className="w-12 py-3 bg-zinc-950/90 border-r border-zinc-900 text-right pr-3 select-none font-mono text-zinc-600 overflow-hidden">
+              <div
+                ref={gutterRef}
+                className="w-10 sm:w-12 py-3 bg-zinc-950/90 border-r border-zinc-900 text-right pr-2 sm:pr-3 select-none font-mono text-zinc-600 overflow-hidden shrink-0"
+              >
                 {lineNumbers.map((num) => (
                   <div
                     key={num}
@@ -440,29 +462,36 @@ export default function WorkspacePage() {
                 ))}
               </div>
 
-              {/* Code Textarea */}
-              <div className="flex-1 relative overflow-auto">
+              {/* Code Textarea Container */}
+              <div className="flex-1 relative overflow-hidden min-w-0 min-h-0">
                 <textarea
                   ref={textareaRef}
                   value={sourceCode}
                   onChange={(e) => setSourceCode(e.target.value)}
                   onKeyDown={handleKeyDown}
+                  onScroll={(e) => {
+                    if (gutterRef.current) {
+                      gutterRef.current.scrollTop = e.currentTarget.scrollTop;
+                    }
+                  }}
                   spellCheck={false}
                   className={`w-full h-full bg-transparent text-zinc-100 font-mono p-3 outline-none resize-none leading-[1.6] ${
-                    isLineWrapping ? "whitespace-pre-wrap" : "whitespace-pre overflow-x-auto"
+                    isLineWrapping
+                      ? "whitespace-pre-wrap break-words overflow-y-auto"
+                      : "whitespace-pre overflow-x-auto overflow-y-auto"
                   }`}
                   style={{
                     fontSize: `${fontSize}px`,
                     tabSize: tabSize,
                   }}
-                  placeholder="// Write your Java code here..."
+                  placeholder={`// Write your ${currentAdapter.name} code here...`}
                 />
               </div>
 
               {/* Minimap Preview Rail */}
               {showMinimap && (
                 <div
-                  className="w-24 bg-zinc-950/90 border-l border-zinc-900/80 p-2 overflow-hidden select-none pointer-events-none opacity-45 hidden md:block"
+                  className="w-24 bg-zinc-950/90 border-l border-zinc-900/80 p-2 overflow-hidden select-none pointer-events-none opacity-45 hidden md:block shrink-0"
                   aria-hidden="true"
                 >
                   <pre
@@ -476,7 +505,7 @@ export default function WorkspacePage() {
             </div>
 
             {/* Editor Footer Status Bar */}
-            <div className="px-4 py-1.5 bg-zinc-900/60 border-t border-zinc-800 flex items-center justify-between text-[11px] font-mono text-zinc-400">
+            <div className="px-3 sm:px-4 py-1.5 bg-zinc-900/60 border-t border-zinc-800 flex items-center justify-between text-[11px] font-mono text-zinc-400 shrink-0">
               <div className="flex items-center gap-3">
                 <span className="flex items-center gap-1">
                   <Keyboard className="w-3 h-3 text-zinc-500" />
@@ -490,15 +519,15 @@ export default function WorkspacePage() {
                 )}
               </div>
               <div className="flex items-center gap-2">
-                <span>JDK 25.0 LTS</span>
+                <span>{currentAdapter.name} • {currentAdapter.version}</span>
               </div>
             </div>
           </div>
 
           {/* Right Inspection Stack: Diagnostics, Console, & Stdin */}
-          <div className="lg:col-span-4 flex flex-col gap-4 overflow-hidden">
+          <div className="lg:col-span-4 flex flex-col rounded-xl border border-zinc-800 bg-zinc-950 overflow-hidden shadow-xs min-w-0 min-h-[320px] lg:min-h-0">
             {/* Panel Tabs Header */}
-            <div className="flex items-center border-b border-zinc-800 bg-zinc-900/80 rounded-t-xl px-2 pt-1 gap-1">
+            <div className="flex items-center border-b border-zinc-800 bg-zinc-900/80 px-2 pt-1 gap-1 flex-wrap shrink-0">
               <button
                 type="button"
                 onClick={() => setActiveTab("stdout")}
@@ -509,7 +538,7 @@ export default function WorkspacePage() {
                 }`}
               >
                 <Terminal className="w-3.5 h-3.5" />
-                <span>Console Output</span>
+                <span>Console<span className="hidden sm:inline"> Output</span></span>
               </button>
 
               <button
@@ -522,7 +551,7 @@ export default function WorkspacePage() {
                 }`}
               >
                 <Send className="w-3.5 h-3.5" />
-                <span>Standard Input</span>
+                <span><span className="hidden sm:inline">Standard </span>Input</span>
                 {stdinInput.trim() && (
                   <span className="w-1.5 h-1.5 rounded-full bg-accent" />
                 )}
@@ -561,7 +590,7 @@ export default function WorkspacePage() {
             </div>
 
             {/* Panel Content Body */}
-            <div className="flex-1 flex flex-col rounded-b-xl border border-t-0 border-zinc-800 bg-zinc-950 overflow-hidden shadow-xs">
+            <div className="flex-1 flex flex-col bg-zinc-950 overflow-hidden min-h-0 min-w-0">
               {/* STDOUT TAB */}
               {activeTab === "stdout" && (
                 <div className="flex-1 flex flex-col p-3 overflow-hidden">
@@ -594,12 +623,12 @@ export default function WorkspacePage() {
                     ) : executionResult ? (
                       <div>
                         {executionResult.output && (
-                          <pre className="text-zinc-200 whitespace-pre-wrap leading-relaxed">
+                          <pre className="text-zinc-200 whitespace-pre-wrap break-words leading-relaxed">
                             {executionResult.output}
                           </pre>
                         )}
                         {executionResult.runtimeError && (
-                          <pre className="text-rose-400 whitespace-pre-wrap mt-2">
+                          <pre className="text-rose-400 whitespace-pre-wrap break-words mt-2">
                             {executionResult.runtimeError}
                           </pre>
                         )}
