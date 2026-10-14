@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef, useMemo } from "react";
+import React, { useState, useEffect, useRef, useMemo, useSyncExternalStore } from "react";
 import {
   Play,
   Pause,
@@ -25,6 +25,7 @@ import {
   Repeat,
   Cpu,
   TrendingUp,
+  Activity,
 } from "lucide-react";
 import { TraceResponsePayload, TraceStep } from "@/lib/api/types";
 import { Button } from "@/components/ui/Button";
@@ -104,6 +105,18 @@ export function TraceVisualizer({ trace, sourceCode }: TraceVisualizerProps) {
   );
   const [isHighContrast, setIsHighContrast] = useState<boolean>(false);
   const [isLooping, setIsLooping] = useState<boolean>(false);
+  const [reducedMotionOverride, setReducedMotionOverride] = useState<boolean | null>(null);
+  const systemPrefersReducedMotion = useSyncExternalStore(
+    (callback) => {
+      if (typeof window === "undefined" || !window.matchMedia) return () => {};
+      const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
+      mq.addEventListener?.("change", callback);
+      return () => mq.removeEventListener?.("change", callback);
+    },
+    () => (typeof window !== "undefined" && window.matchMedia ? window.matchMedia("(prefers-reduced-motion: reduce)").matches : false),
+    () => false
+  );
+  const prefersReducedMotion = reducedMotionOverride !== null ? reducedMotionOverride : systemPrefersReducedMotion;
   const baseSpeed = preferences?.visualizerSpeed || 600;
   const isCompact = visualDensity === "compact";
   const detailLevel = preferences?.visualizationDetail || "standard";
@@ -496,6 +509,27 @@ export function TraceVisualizer({ trace, sourceCode }: TraceVisualizerProps) {
           >
             <SlidersHorizontal className="w-3.5 h-3.5" />
           </button>
+          <button
+            type="button"
+            onClick={() =>
+              setReducedMotionOverride((prev) =>
+                prev !== null ? !prev : !systemPrefersReducedMotion
+              )
+            }
+            className={`p-1.5 rounded transition-colors cursor-pointer ${
+              prefersReducedMotion
+                ? "text-amber-400 bg-amber-500/15 border border-amber-500/40"
+                : "text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800"
+            }`}
+            title={
+              prefersReducedMotion
+                ? "Reduced Motion: Active (Instant transitions & auto-expanded textual explanation)"
+                : "Toggle Reduced Motion Accessibility Mode"
+            }
+            aria-label="Toggle Reduced Motion Accessibility Mode"
+          >
+            <Activity className="w-3.5 h-3.5" />
+          </button>
         </div>
       </Card>
 
@@ -668,6 +702,7 @@ export function TraceVisualizer({ trace, sourceCode }: TraceVisualizerProps) {
               <AdaptiveConceptDispatcher
                 event={currentNormalizedEvent}
                 sourceLines={sourceLines}
+                prefersReducedMotion={prefersReducedMotion}
               />
             )}
 

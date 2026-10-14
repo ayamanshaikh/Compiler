@@ -30,6 +30,7 @@ interface AdaptiveConceptDispatcherProps {
   sourceLines?: string[];
   initialMode?: "beginner" | "detailed";
   onModeChange?: (mode: "beginner" | "detailed") => void;
+  prefersReducedMotion?: boolean;
 }
 
 export function AdaptiveConceptDispatcher({
@@ -37,8 +38,9 @@ export function AdaptiveConceptDispatcher({
   sourceLines,
   initialMode,
   onModeChange,
+  prefersReducedMotion = false,
 }: AdaptiveConceptDispatcherProps) {
-  const [showCompanionExplanation, setShowCompanionExplanation] = useState<boolean>(false);
+  const [showCompanionExplanation, setShowCompanionExplanation] = useState<boolean>(prefersReducedMotion);
   const decision = resolveVisualizationStrategy(event);
   const effectiveInitialMode = initialMode || decision.suggestedDetailLevel || "beginner";
   const explanation = useMemo(
@@ -47,7 +49,7 @@ export function AdaptiveConceptDispatcher({
   );
 
   return (
-    <div className="flex flex-col gap-2.5">
+    <div className={`flex flex-col gap-2.5 ${prefersReducedMotion ? "motion-reduce" : ""}`}>
       {/* Strategy Mode Header & Concept Card */}
       <Card className="p-3 bg-zinc-900/95 border-zinc-800 flex flex-col gap-2.5">
         <div className="flex items-center justify-between pb-2 border-b border-zinc-800/80">
@@ -64,6 +66,11 @@ export function AdaptiveConceptDispatcher({
             </span>
           </div>
           <div className="flex items-center gap-1.5">
+            {prefersReducedMotion && (
+              <Badge variant="outline" size="sm" className="text-amber-300 border-amber-500/40 bg-amber-500/10">
+                Reduced Motion
+              </Badge>
+            )}
             <Badge
               variant={decision.mode === "VISUAL_EXECUTION" ? "success" : "default"}
               size="sm"

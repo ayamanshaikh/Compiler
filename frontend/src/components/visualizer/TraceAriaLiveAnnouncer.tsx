@@ -40,15 +40,40 @@ export function formatAriaStepAnnouncement(
     case "LOOP_START":
       body = `Loop started at line ${event.sourceLine}.`;
       break;
-    case "LOOP_ITERATION":
-      body = `Loop iteration ${event.metadata?.iteration ?? "in progress"}. Variables: ${Object.entries(event.variables).map(([k, v]) => `${k} equals ${v}`).join(", ")}.`;
+    case "LOOP_ITERATION": {
+      const varStr = Object.entries(event.variables)
+        .map(([k, v]) => `${k} equals ${typeof v === "object" && v ? v.value : v}`)
+        .join(", ");
+      body = `Loop iteration ${event.metadata?.iteration ?? "in progress"}. Variables: ${varStr || "none"}.`;
       break;
+    }
     case "LOOP_END":
       body = `Loop finished execution.`;
       break;
     case "ARRAY_ACCESS":
     case "ARRAY_MUTATION":
       body = `Array ${event.symbol || "elements"} at index ${event.metadata?.index ?? "selected"} updated to ${event.currentValue ?? "value"}.`;
+      break;
+    case "SWAP":
+      body = `Swapped elements at index ${event.metadata?.leftIndex ?? 0} and index ${event.metadata?.rightIndex ?? 1}.`;
+      break;
+    case "MATRIX_2D":
+      body = `2D Matrix cell at row ${event.metadata?.rowIndex ?? 0}, column ${event.metadata?.colIndex ?? 0} updated to ${event.currentValue ?? "value"}.`;
+      break;
+    case "COLLECTION_OPERATION":
+      body = `Collection ${event.symbol || "list"} ${event.operation || "operation"} with item ${event.currentValue ?? ""}.`;
+      break;
+    case "STRING_OPERATION":
+      body = `String sequence character inspection: character '${event.currentValue ?? ""}' at position ${event.metadata?.charIndex ?? 0}.`;
+      break;
+    case "COMPARISON":
+      body = `Comparison check yielded ${event.currentValue}.`;
+      break;
+    case "RECURSION":
+      body = `Recursive call frame depth ${event.callStack?.length ?? 1} for ${event.symbol || "method"}.`;
+      break;
+    case "OBJECT_CREATE":
+      body = `Created object instance ${event.symbol || ""} of type ${event.metadata?.className ?? "Object"}.`;
       break;
     case "FUNCTION_CALL":
       body = `Calling function ${event.symbol || "method"}.`;

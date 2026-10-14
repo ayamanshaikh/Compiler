@@ -499,22 +499,197 @@ test("Trace State URL Hash Sharing Verification", async (t) => {
 });
 
 test("Screen Reader ARIA Live Step Announcer Verification", async (t) => {
+  const formatAriaStepAnnouncement = (stepIndex, totalSteps, event) => {
+    if (!event) {
+      return `Step ${stepIndex + 1} of ${totalSteps}. Execution step.`;
+    }
+    const prefix = `Step ${stepIndex + 1} of ${totalSteps}. Line ${event.sourceLine}.`;
+    let body = "";
+    switch (event.conceptType) {
+      case "VARIABLE_ASSIGNMENT":
+        body = `Variable ${event.symbol || "variable"} set to ${event.currentValue ?? "value"}.`;
+        break;
+      case "CONDITION_BRANCH":
+        body = `Condition evaluation resulted in ${event.currentValue || "evaluation"}.`;
+        break;
+      case "LOOP_START":
+        body = `Loop started at line ${event.sourceLine}.`;
+        break;
+      case "LOOP_ITERATION": {
+        const varStr = Object.entries(event.variables || {})
+          .map(([k, v]) => `${k} equals ${typeof v === "object" && v ? v.value : v}`)
+          .join(", ");
+        body = `Loop iteration ${event.metadata?.iteration ?? "in progress"}. Variables: ${varStr || "none"}.`;
+        break;
+      }
+      case "LOOP_END":
+        body = `Loop finished execution.`;
+        break;
+      case "ARRAY_MUTATION":
+        body = `Array ${event.symbol || "elements"} at index ${event.metadata?.index ?? "selected"} updated to ${event.currentValue ?? "value"}.`;
+        break;
+      case "SWAP":
+        body = `Swapped elements at index ${event.metadata?.leftIndex ?? 0} and index ${event.metadata?.rightIndex ?? 1}.`;
+        break;
+      case "MATRIX_2D":
+        body = `2D Matrix cell at row ${event.metadata?.rowIndex ?? 0}, column ${event.metadata?.colIndex ?? 0} updated to ${event.currentValue ?? "value"}.`;
+        break;
+      case "COLLECTION_OPERATION":
+        body = `Collection ${event.symbol || "list"} ${event.operation || "operation"} with item ${event.currentValue ?? ""}.`;
+        break;
+      case "STRING_OPERATION":
+        body = `String sequence character inspection: character '${event.currentValue ?? ""}' at position ${event.metadata?.charIndex ?? 0}.`;
+        break;
+      case "COMPARISON":
+        body = `Comparison check yielded ${event.currentValue}.`;
+        break;
+      case "RECURSION":
+        body = `Recursive call frame depth ${event.callStack?.length ?? 1} for ${event.symbol || "method"}.`;
+        break;
+      case "OBJECT_CREATE":
+        body = `Created object instance ${event.symbol || ""} of type ${event.metadata?.className ?? "Object"}.`;
+        break;
+      case "FUNCTION_CALL":
+        body = `Calling function ${event.symbol || "method"}.`;
+        break;
+      case "FUNCTION_RETURN":
+        body = `Function returned ${event.currentValue ?? "to caller"}.`;
+        break;
+      case "EXCEPTION":
+        body = `Exception thrown: ${event.metadata?.exceptionClass || "Error"}. ${event.currentValue || ""}.`;
+        break;
+      default:
+        body = `Executed statement: ${event.description || "line step"}.`;
+        break;
+    }
+    return `${prefix} ${body}`;
+  };
+
   await t.test("Formats variable assignment announcement correctly", () => {
-    const formatAnnouncement = (step, total, ev) =>
-      `Step ${step + 1} of ${total}. Line ${ev.lineNumber}. Variable ${ev.symbol} updated from ${ev.previousValue} to ${ev.currentValue}.`;
-    
-    const ev = { lineNumber: 5, symbol: "total", previousValue: "100", currentValue: "300" };
-    const msg = formatAnnouncement(2, 10, ev);
-    assert.equal(msg, "Step 3 of 10. Line 5. Variable total updated from 100 to 300.");
+    const ev = { conceptType: "VARIABLE_ASSIGNMENT", sourceLine: 5, symbol: "total", currentValue: "300" };
+    const msg = formatAriaStepAnnouncement(2, 10, ev);
+    assert.equal(msg, "Step 3 of 10. Line 5. Variable total set to 300.");
   });
 
   await t.test("Formats condition check announcement correctly", () => {
-    const formatAnnouncement = (step, total, ev) =>
-      `Step ${step + 1} of ${total}. Line ${ev.lineNumber}. Condition ${ev.condition} evaluated to ${ev.result}.`;
+    const ev = { conceptType: "CONDITION_BRANCH", sourceLine: 12, currentValue: "true" };
+    const msg = formatAriaStepAnnouncement(4, 8, ev);
+    assert.equal(msg, "Step 5 of 8. Line 12. Condition evaluation resulted in true.");
+  });
 
-    const ev = { lineNumber: 12, condition: "age >= 18", result: "true" };
-    const msg = formatAnnouncement(4, 8, ev);
-    assert.equal(msg, "Step 5 of 8. Line 12. Condition age >= 18 evaluated to true.");
+  await t.test("Formats loop iteration with VariableSnapshot records without [object Object] leaks", () => {
+    const ev = {
+      conceptType: "LOOP_ITERATION",
+      sourceLine: 8,
+      metadata: { iteration: 3 },
+      variables: {
+        i: { name: "i", type: "int", value: "3" },
+        total: { name: "total", type: "int", value: "15" },
+      },
+    };
+    const msg = formatAriaStepAnnouncement(7, 20, ev);
+    assert.ok(!msg.includes("[object Object]"), "Must never leak [object Object] in announcement");
+    assert.ok(msg.includes("Loop iteration 3."));
+    assert.ok(msg.includes("i equals 3, total equals 15"));
+  });
+
+  await t.test("Formats 2D matrix, dynamic collection, swap, and recursion announcements", () => {
+    const matrixEv = {
+      conceptType: "MATRIX_2D",
+      sourceLine: 14,
+      currentValue: "99",
+      metadata: { rowIndex: 1, colIndex: 2 },
+    };
+    assert.equal(
+      formatAriaStepAnnouncement(0, 5, matrixEv),
+      "Step 1 of 5. Line 14. 2D Matrix cell at row 1, column 2 updated to 99."
+    );
+
+    const swapEv = {
+      conceptType: "SWAP",
+      sourceLine: 22,
+      metadata: { leftIndex: 3, rightIndex: 4 },
+    };
+    assert.equal(
+      formatAriaStepAnnouncement(3, 10, swapEv),
+      "Step 4 of 10. Line 22. Swapped elements at index 3 and index 4."
+    );
+
+    const collEv = {
+      conceptType: "COLLECTION_OPERATION",
+      sourceLine: 18,
+      symbol: "names",
+      operation: "append",
+      currentValue: "Alice",
+    };
+    assert.equal(
+      formatAriaStepAnnouncement(5, 12, collEv),
+      "Step 6 of 12. Line 18. Collection names append with item Alice."
+    );
+
+    const recEv = {
+      conceptType: "RECURSION",
+      sourceLine: 30,
+      symbol: "factorial",
+      callStack: [{ methodName: "main" }, { methodName: "factorial" }, { methodName: "factorial" }],
+    };
+    assert.equal(
+      formatAriaStepAnnouncement(8, 15, recEv),
+      "Step 9 of 15. Line 30. Recursive call frame depth 3 for factorial."
+    );
+  });
+
+  await t.test("Formats string inspection, object creation, and exceptions", () => {
+    const strEv = {
+      conceptType: "STRING_OPERATION",
+      sourceLine: 11,
+      currentValue: "C",
+      metadata: { charIndex: 0 },
+    };
+    assert.equal(
+      formatAriaStepAnnouncement(0, 4, strEv),
+      "Step 1 of 4. Line 11. String sequence character inspection: character 'C' at position 0."
+    );
+
+    const objEv = {
+      conceptType: "OBJECT_CREATE",
+      sourceLine: 7,
+      symbol: "student",
+      metadata: { className: "Student" },
+    };
+    assert.equal(
+      formatAriaStepAnnouncement(1, 4, objEv),
+      "Step 2 of 4. Line 7. Created object instance student of type Student."
+    );
+
+    const excEv = {
+      conceptType: "EXCEPTION",
+      sourceLine: 25,
+      currentValue: "Index 5 out of bounds for length 5",
+      metadata: { exceptionClass: "ArrayIndexOutOfBoundsException" },
+    };
+    assert.equal(
+      formatAriaStepAnnouncement(4, 5, excEv),
+      "Step 5 of 5. Line 25. Exception thrown: ArrayIndexOutOfBoundsException. Index 5 out of bounds for length 5."
+    );
+  });
+
+  await t.test("Reduced-motion preference activates instant state transitions and auto-expands textual explanation", () => {
+    const getAdaptiveDispatcherState = (prefersReducedMotion) => ({
+      showCompanionExplanation: prefersReducedMotion,
+      containerClass: prefersReducedMotion ? "flex flex-col gap-2.5 motion-reduce" : "flex flex-col gap-2.5",
+      hasReducedMotionBadge: prefersReducedMotion,
+    });
+
+    const standardMode = getAdaptiveDispatcherState(false);
+    assert.equal(standardMode.showCompanionExplanation, false);
+    assert.equal(standardMode.containerClass.includes("motion-reduce"), false);
+    assert.equal(standardMode.hasReducedMotionBadge, false);
+
+    const reducedMotionMode = getAdaptiveDispatcherState(true);
+    assert.equal(reducedMotionMode.showCompanionExplanation, true);
+    assert.equal(reducedMotionMode.containerClass.includes("motion-reduce"), true);
+    assert.equal(reducedMotionMode.hasReducedMotionBadge, true);
   });
 });
 
