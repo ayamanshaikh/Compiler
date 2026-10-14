@@ -30,6 +30,11 @@ import { TraceHistoryModal } from "@/components/visualizer/TraceHistoryModal";
 import { CompilerPipelineVisualizer } from "@/components/visualizer/compiler/CompilerPipelineVisualizer";
 import { HardwareSimulationVisualizer } from "@/components/visualizer/systems/HardwareSimulationVisualizer";
 import { InteractiveComplexityVisualizer } from "@/components/visualizer/complexity/InteractiveComplexityVisualizer";
+import { GuidedDebuggingVisualizer } from "@/components/visualizer/debugging/GuidedDebuggingVisualizer";
+import {
+  diagnoseProgramFailure,
+  GuidedErrorRemediation,
+} from "@/lib/visualizer/guidedDebugging";
 import {
   Play,
   Sparkles,
@@ -366,6 +371,7 @@ function VisualizeContent() {
   const [isJvmLoading, setIsJvmLoading] = useState<boolean>(false);
   const [jvmTrace, setJvmTrace] = useState<TraceResponsePayload | null>(null);
   const [jvmError, setJvmError] = useState<string | null>(null);
+  const [guidedRemediation, setGuidedRemediation] = useState<GuidedErrorRemediation | null>(null);
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState<boolean>(false);
 
   const handleRestoreFromHistory = (entry: TraceHistoryEntry) => {
@@ -500,13 +506,28 @@ function VisualizeContent() {
       });
 
       if (!response.success && response.status === "COMPILATION_ERROR") {
+        const remediation = diagnoseProgramFailure({
+          diagnostics: response.diagnostics,
+          sourceCode,
+        });
+        setGuidedRemediation(remediation);
         const diagMsg =
           response.diagnostics?.[0]?.explanation?.simpleExplanation ||
           response.diagnostics?.[0]?.message ||
           "Compilation failed before execution.";
         setJvmError(diagMsg);
         setJvmTrace(null);
+      } else if (!response.success && response.runtimeError) {
+        const remediation = diagnoseProgramFailure({
+          runtimeError: response.runtimeError,
+          steps: response.steps,
+          sourceCode,
+        });
+        setGuidedRemediation(remediation);
+        setJvmError(response.runtimeError);
+        setJvmTrace(response);
       } else {
+        setGuidedRemediation(null);
         setJvmTrace(response);
         saveTraceToHistory(response, sourceCode);
       }
@@ -840,7 +861,17 @@ function VisualizeContent() {
               </div>
             </div>
 
-            {jvmError && (
+            {guidedRemediation ? (
+              <GuidedDebuggingVisualizer
+                remediation={guidedRemediation}
+                onApplyFix={(fixedCode) => {
+                  setSourceCode(fixedCode);
+                  setGuidedRemediation(null);
+                  setJvmError(null);
+                }}
+                onDismiss={() => setGuidedRemediation(null)}
+              />
+            ) : jvmError && (
               <div className="flex items-center gap-2 p-3 bg-red-950/40 border border-red-800/80 rounded-lg text-red-200 text-sm">
                 <AlertCircle className="w-4 h-4 text-red-400 shrink-0" />
                 <span>{jvmError}</span>

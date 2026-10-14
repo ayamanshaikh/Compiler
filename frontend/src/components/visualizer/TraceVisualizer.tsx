@@ -48,6 +48,8 @@ import { ComplexityEstimatorCard } from "./ComplexityEstimatorCard";
 import { ExplanationTimeline } from "@/components/visualizer/explanation/ExplanationTimeline";
 import { HardwareSimulationVisualizer } from "@/components/visualizer/systems/HardwareSimulationVisualizer";
 import { InteractiveComplexityVisualizer } from "@/components/visualizer/complexity/InteractiveComplexityVisualizer";
+import { GuidedDebuggingVisualizer } from "@/components/visualizer/debugging/GuidedDebuggingVisualizer";
+import { diagnoseProgramFailure } from "@/lib/visualizer/guidedDebugging";
 
 interface TraceVisualizerProps {
   trace: TraceResponsePayload;
@@ -75,6 +77,17 @@ export function TraceVisualizer({ trace, sourceCode }: TraceVisualizerProps) {
     () => steps.map((s) => normalizeTraceStep(s)),
     [steps]
   );
+
+  const runtimeRemediation = useMemo(() => {
+    if (trace.runtimeError) {
+      return diagnoseProgramFailure({
+        runtimeError: trace.runtimeError,
+        steps,
+        sourceCode,
+      });
+    }
+    return null;
+  }, [trace.runtimeError, steps, sourceCode]);
 
   const currentNormalizedEvent = useMemo(
     () => (currentStep ? normalizeTraceStep(currentStep) : null),
@@ -581,6 +594,13 @@ export function TraceVisualizer({ trace, sourceCode }: TraceVisualizerProps) {
             </span>
           ))}
         </div>
+      )}
+
+      {/* Runtime Exception Guided Remediation Banner */}
+      {runtimeRemediation && (
+        <GuidedDebuggingVisualizer
+          remediation={runtimeRemediation}
+        />
       )}
 
       {/* View Mode Content: Complexity Analysis vs Systems Simulation vs Visual Inspector vs Step-by-Step Narrative */}

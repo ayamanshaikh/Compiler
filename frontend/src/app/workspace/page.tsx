@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import NextLink from "next/link";
 import { AppShell } from "@/components/layout/AppShell";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -33,6 +33,11 @@ import {
   GitFork,
   TrendingUp,
 } from "lucide-react";
+import { GuidedDebuggingVisualizer } from "@/components/visualizer/debugging/GuidedDebuggingVisualizer";
+import {
+  diagnoseProgramFailure,
+  GuidedErrorRemediation,
+} from "@/lib/visualizer/guidedDebugging";
 
 const DEFAULT_JAVA_CODE = `public class Main {
     public static void main(String[] args) {
@@ -166,10 +171,18 @@ export default function WorkspacePage() {
     }
   };
 
-  const allDiagnostics: CompilerDiagnostic[] = [
+  const allDiagnostics: CompilerDiagnostic[] = useMemo(() => [
     ...(executionResult?.diagnostics || []),
     ...(compileResult?.diagnostics || []),
-  ];
+  ], [executionResult?.diagnostics, compileResult?.diagnostics]);
+
+  const diagnosedError: GuidedErrorRemediation | null = useMemo(() => {
+    return diagnoseProgramFailure({
+      diagnostics: allDiagnostics,
+      runtimeError: executionResult?.runtimeError,
+      sourceCode,
+    });
+  }, [allDiagnostics, executionResult?.runtimeError, sourceCode]);
 
   return (
     <AppShell>
@@ -581,6 +594,16 @@ export default function WorkspacePage() {
               {/* DIAGNOSTICS TAB */}
               {activeTab === "diagnostics" && (
                 <div className="flex-1 p-3 overflow-y-auto space-y-3">
+                  {diagnosedError && (
+                    <GuidedDebuggingVisualizer
+                      remediation={diagnosedError}
+                      onApplyFix={(fixedCode) => {
+                        setSourceCode(fixedCode);
+                        handleCompile();
+                      }}
+                    />
+                  )}
+
                   {allDiagnostics.length > 0 ? (
                     allDiagnostics.map((diag, idx) => (
                       <div
