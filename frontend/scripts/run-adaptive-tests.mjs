@@ -693,7 +693,7 @@ test("Asymptotic Execution Complexity Estimation Verification", async (t) => {
 });
 
 test("Curated Preset Archetypes Catalogue Verification", async (t) => {
-  await t.test("Ensures presets contain valid Java syntax and unique identifiers", () => {
+  await t.test("Ensures presets contain valid syntax, unique identifiers, and supported languages", () => {
     const presetIds = [
       "variables-arithmetic",
       "condition-loops",
@@ -705,11 +705,17 @@ test("Curated Preset Archetypes Catalogue Verification", async (t) => {
       "recursion-factorial",
       "object-references",
       "mixed-pipeline",
+      "python-list-ops",
+      "python-binary-search",
+      "python-factorial",
+      "cpp-pointers-memory",
+      "cpp-pointer-arithmetic",
+      "c-malloc-free",
     ];
 
     const idSet = new Set(presetIds);
     assert.equal(idSet.size, presetIds.length);
-    assert.equal(presetIds.length, 10);
+    assert.equal(presetIds.length, 16);
   });
 });
 

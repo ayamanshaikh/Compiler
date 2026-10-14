@@ -32,6 +32,7 @@ import {
 interface CompilerPipelineVisualizerProps {
   sourceCode: string;
   className?: string;
+  language?: string;
   onSelectSourceLine?: (lineNumber: number) => void;
   classNameOverride?: string;
 }
@@ -39,6 +40,7 @@ interface CompilerPipelineVisualizerProps {
 export function CompilerPipelineVisualizer({
   sourceCode,
   className = "Main",
+  language = "JAVA",
   onSelectSourceLine,
   classNameOverride = "",
 }: CompilerPipelineVisualizerProps) {
@@ -63,6 +65,7 @@ export function CompilerPipelineVisualizer({
       const res = await compilerPipelineApi.inspectPipeline({
         sourceCode,
         className,
+        language,
       });
       setPipelineData(res);
     } catch (err: unknown) {
@@ -70,29 +73,28 @@ export function CompilerPipelineVisualizer({
     } finally {
       setIsLoading(false);
     }
-  }, [sourceCode, className]);
+  }, [sourceCode, className, language]);
 
   useEffect(() => {
     let cancelled = false;
     compilerPipelineApi
-      .inspectPipeline({ sourceCode, className })
+      .inspectPipeline({ sourceCode, className, language })
       .then((res) => {
         if (!cancelled) {
           setPipelineData(res);
           setIsLoading(false);
         }
       })
-      .catch((err: unknown) => {
+      .catch((err) => {
         if (!cancelled) {
-          setErrorMessage(err instanceof Error ? err.message : "Failed to analyze compiler pipeline.");
+          setErrorMessage(err instanceof Error ? err.message : "Failed to load compiler pipeline.");
           setIsLoading(false);
         }
       });
-
     return () => {
       cancelled = true;
     };
-  }, [sourceCode, className]);
+  }, [sourceCode, className, language]);
 
   const sourceLines = useMemo(() => sourceCode.split(/\r?\n/), [sourceCode]);
 

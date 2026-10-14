@@ -48,18 +48,22 @@ import {
   Box,
   Binary,
   Code2,
-  Workflow,
   CheckCircle2,
   Upload,
   History,
   GitFork,
   TrendingUp,
 } from "lucide-react";
+import {
+  languageRegistry,
+  LanguageId,
+} from "@/lib/visualizer/languageAdapters";
 
 export interface TracePreset {
   id: string;
   name: string;
-  category: "Variables" | "Loops" | "Arrays" | "Recursion" | "Objects" | "Strings" | "Matrix" | "Exceptions" | "Mixed";
+  language: LanguageId;
+  category: "Variables" | "Loops" | "Arrays" | "Recursion" | "Objects" | "Strings" | "Matrix" | "Exceptions" | "Pointers" | "Mixed";
   badge: string;
   description: string;
   sourceCode: string;
@@ -69,6 +73,7 @@ export const TRACE_PRESETS: TracePreset[] = [
   {
     id: "variables-arithmetic",
     name: "Variables & Arithmetic Flow",
+    language: "java",
     category: "Variables",
     badge: "EXPRESSIONS",
     description: "Evaluates arithmetic input flow (price * quantity) and scalar mutations.",
@@ -88,6 +93,7 @@ export const TRACE_PRESETS: TracePreset[] = [
   {
     id: "condition-loops",
     name: "Condition Branches & Loops",
+    language: "java",
     category: "Loops",
     badge: "LOOPS & BRANCHES",
     description: "Shows changing loop state per iteration and boolean branch divergence.",
@@ -109,6 +115,7 @@ export const TRACE_PRESETS: TracePreset[] = [
   {
     id: "array-mutations",
     name: "Array Index Mutations",
+    language: "java",
     category: "Arrays",
     badge: "ARRAY MUTATION",
     description: "Tracks cell allocations, index highlight, and value updates in memory.",
@@ -130,6 +137,7 @@ export const TRACE_PRESETS: TracePreset[] = [
   {
     id: "binary-search",
     name: "Binary Search Window",
+    language: "java",
     category: "Arrays",
     badge: "BINARY SEARCH",
     description: "Halves search interval dynamically between low, mid, and high pointers.",
@@ -159,6 +167,7 @@ export const TRACE_PRESETS: TracePreset[] = [
   {
     id: "string-palindrome",
     name: "String Character Scanner",
+    language: "java",
     category: "Strings",
     badge: "CHAR SEQUENCE",
     description: "Scans indexed character cells to verify symmetrical palindrome sequences.",
@@ -186,6 +195,7 @@ export const TRACE_PRESETS: TracePreset[] = [
   {
     id: "matrix-grid",
     name: "2D Matrix Coordinates",
+    language: "java",
     category: "Matrix",
     badge: "2D GRID",
     description: "Populates multi-dimensional matrix cells in row-major order with active crosshairs.",
@@ -207,6 +217,7 @@ export const TRACE_PRESETS: TracePreset[] = [
   {
     id: "exception-handling",
     name: "Try-Catch Exception Flow",
+    language: "java",
     category: "Exceptions",
     badge: "EXCEPTION",
     description: "Demonstrates runtime exception throwing, stack unwinding, and catch block recovery.",
@@ -230,6 +241,7 @@ export const TRACE_PRESETS: TracePreset[] = [
   {
     id: "recursion-factorial",
     name: "Recursive Call Stack",
+    language: "java",
     category: "Recursion",
     badge: "CALL LADDER",
     description: "Visualizes stack growth across recursive frames and unwinding return flow.",
@@ -251,6 +263,7 @@ export const TRACE_PRESETS: TracePreset[] = [
   {
     id: "object-references",
     name: "Object References & Heap",
+    language: "java",
     category: "Objects",
     badge: "HEAP INSTANCE",
     description: "Binds reference pointers to conceptual heap objects with field inspections.",
@@ -274,6 +287,7 @@ export const TRACE_PRESETS: TracePreset[] = [
   {
     id: "mixed-pipeline",
     name: "Mixed Multi-Phase Program",
+    language: "java",
     category: "Mixed",
     badge: "ADAPTIVE MIXED",
     description: "Combines visual mutations with non-visual statements and structured explanation fallback.",
@@ -290,6 +304,148 @@ export const TRACE_PRESETS: TracePreset[] = [
 
         System.out.println("Final score: " + scores[2]);
     }
+}`,
+  },
+  // Python Archetypes
+  {
+    id: "python-list-ops",
+    name: "Dynamic List & Append Growth",
+    language: "python",
+    category: "Arrays",
+    badge: "DYNAMIC LIST",
+    description: "Tracks dynamic CPython PyListObject memory growth and element append mutations.",
+    sourceCode: `def main():
+    numbers = []
+    for i in range(1, 6):
+        numbers.append(i * 10)
+        print(f"Appended {i * 10}, list: {numbers}")
+    
+    total = sum(numbers)
+    print(f"Total: {total}")
+
+if __name__ == "__main__":
+    main()`,
+  },
+  {
+    id: "python-binary-search",
+    name: "Binary Search Window Halving",
+    language: "python",
+    category: "Loops",
+    badge: "WINDOW HALVING",
+    description: "Demonstrates logarithmic O(log n) window division with low, mid, and high index pointers.",
+    sourceCode: `def binary_search(arr, target):
+    low = 0
+    high = len(arr) - 1
+
+    while low <= high:
+        mid = (low + high) // 2
+        guess = arr[mid]
+        if guess == target:
+            return mid
+        elif guess > target:
+            high = mid - 1
+        else:
+            low = mid + 1
+    return -1
+
+def main():
+    arr = [2, 5, 8, 12, 16, 23, 38, 56, 72, 91]
+    target = 23
+    idx = binary_search(arr, target)
+    print(f"Target {target} located at index {idx}")
+
+if __name__ == "__main__":
+    main()`,
+  },
+  {
+    id: "python-factorial",
+    name: "Recursive Factorial & Call Frames",
+    language: "python",
+    category: "Recursion",
+    badge: "CALL FRAMES",
+    description: "Visualizes Python call frame creation, parameter bindings, and unwind evaluation.",
+    sourceCode: `def factorial(n):
+    if n <= 1:
+        return 1
+    return n * factorial(n - 1)
+
+def main():
+    num = 4
+    result = factorial(num)
+    print(f"Factorial of {num} is {result}")
+
+if __name__ == "__main__":
+    main()`,
+  },
+  // C++ Archetypes
+  {
+    id: "cpp-pointers-memory",
+    name: "Pointers & Memory Addresses",
+    language: "cpp",
+    category: "Pointers",
+    badge: "ADDRESS SPACE",
+    description: "Demystifies the address-of operator (&) and dereference operator (*) in the virtual memory stack.",
+    sourceCode: `#include <iostream>
+
+int main() {
+    int value = 42;
+    int *ptr = &value;
+
+    std::cout << "Original Value: " << value << std::endl;
+    std::cout << "Pointer Address: " << ptr << std::endl;
+
+    *ptr = 99; // Mutate value via pointer dereference
+    std::cout << "Mutated Value: " << value << std::endl;
+
+    return 0;
+}`,
+  },
+  {
+    id: "cpp-pointer-arithmetic",
+    name: "Array Pointer Arithmetic",
+    language: "cpp",
+    category: "Pointers",
+    badge: "POINTER OFFSET",
+    description: "Shows contiguous array memory layout and pointer displacement arithmetic *(ptr + i).",
+    sourceCode: `#include <iostream>
+
+int main() {
+    int numbers[4] = {10, 20, 30, 40};
+    int *ptr = numbers;
+
+    for (int i = 0; i < 4; i++) {
+        std::cout << "Element " << i << " = " << *(ptr + i) 
+                  << " at address " << (ptr + i) << std::endl;
+    }
+
+    return 0;
+}`,
+  },
+  // C Archetype
+  {
+    id: "c-malloc-free",
+    name: "Manual Heap Allocation (malloc / free)",
+    language: "c",
+    category: "Pointers",
+    badge: "MANUAL HEAP",
+    description: "Visualizes explicit heap byte request via malloc, memory initialization, and free release.",
+    sourceCode: `#include <stdio.h>
+#include <stdlib.h>
+
+int main() {
+    int *arr = (int*)malloc(3 * sizeof(int));
+    if (arr == NULL) return 1;
+
+    arr[0] = 100;
+    arr[1] = 200;
+    arr[2] = 300;
+
+    for (int i = 0; i < 3; i++) {
+        printf("arr[%d] = %d\\n", i, arr[i]);
+    }
+
+    free(arr);
+    return 0;
 }`,
   },
 ];
@@ -368,11 +524,25 @@ function VisualizeContent() {
     return TRACE_PRESETS[0].id;
   });
 
+  const [selectedLanguage, setSelectedLanguage] = useState<"ALL" | LanguageId>("ALL");
   const [isJvmLoading, setIsJvmLoading] = useState<boolean>(false);
   const [jvmTrace, setJvmTrace] = useState<TraceResponsePayload | null>(null);
   const [jvmError, setJvmError] = useState<string | null>(null);
   const [guidedRemediation, setGuidedRemediation] = useState<GuidedErrorRemediation | null>(null);
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState<boolean>(false);
+
+  const activePreset = TRACE_PRESETS.find((p) => p.id === selectedPresetId);
+  const currentLanguage: LanguageId = activePreset
+    ? activePreset.language
+    : selectedLanguage !== "ALL"
+    ? selectedLanguage
+    : (sourceCode.includes("#include") ? "cpp" : sourceCode.includes("def ") ? "python" : "java");
+
+  const activeAdapter = languageRegistry.get(currentLanguage);
+
+  const displayedPresets = TRACE_PRESETS.filter(
+    (preset) => selectedLanguage === "ALL" || preset.language === selectedLanguage
+  );
 
   const handleRestoreFromHistory = (entry: TraceHistoryEntry) => {
     setSourceCode(entry.sourceCode);
@@ -501,7 +671,7 @@ function VisualizeContent() {
     setJvmError(null);
     try {
       const response = await traceApi.trace({
-        language: "java",
+        language: currentLanguage,
         sourceCode: sourceCode,
       });
 
@@ -805,19 +975,51 @@ function VisualizeContent() {
             </div>
 
             {/* Presets Archetypes Carousel / Grid */}
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-mono font-medium text-zinc-400 flex items-center gap-1.5">
-                  <Workflow className="w-3.5 h-3.5 text-accent" />
-                  Curated Concept Archetypes
-                </span>
-                <span className="text-[11px] text-zinc-500 font-mono">
-                  Click any archetype to load and trace
-                </span>
+            <div className="space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  {(["ALL", "java", "python", "cpp", "c"] as const).map((lang) => {
+                    const isLangActive = selectedLanguage === lang;
+                    const count =
+                      lang === "ALL"
+                        ? TRACE_PRESETS.length
+                        : TRACE_PRESETS.filter((p) => p.language === lang).length;
+                    const label =
+                      lang === "ALL"
+                        ? `All (${count})`
+                        : lang === "java"
+                        ? `Java (${count})`
+                        : lang === "python"
+                        ? `Python (${count})`
+                        : lang === "cpp"
+                        ? `C++ (${count})`
+                        : `C (${count})`;
+                    return (
+                      <button
+                        key={lang}
+                        type="button"
+                        onClick={() => setSelectedLanguage(lang)}
+                        className={`px-2.5 py-1 text-xs rounded-lg font-mono transition-all border cursor-pointer ${
+                          isLangActive
+                            ? "bg-accent/20 border-accent/70 text-accent font-semibold shadow-xs"
+                            : "bg-zinc-900/60 border-zinc-800 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/40"
+                        }`}
+                      >
+                        {label}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <div className="flex items-center gap-2 text-[11px] font-mono text-zinc-400 bg-zinc-900/80 px-2.5 py-1 rounded-lg border border-zinc-800 self-start sm:self-auto">
+                  <span className="text-accent font-semibold">{activeAdapter.name}</span>
+                  <span className="text-zinc-600">•</span>
+                  <span className="text-zinc-300">{activeAdapter.capabilities.runtimeEngine}</span>
+                </div>
               </div>
 
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2.5">
-                {TRACE_PRESETS.map((preset) => {
+                {displayedPresets.map((preset) => {
                   const isSelected = selectedPresetId === preset.id;
                   return (
                     <button
@@ -838,6 +1040,7 @@ function VisualizeContent() {
                       <div>
                         <div className="flex items-center justify-between gap-1 mb-1">
                           <span className="text-[9px] font-mono uppercase tracking-wider text-zinc-400">
+                            {selectedLanguage === "ALL" ? `${preset.language.toUpperCase()} • ` : ""}
                             {preset.category}
                           </span>
                           {isSelected && (
@@ -1022,6 +1225,7 @@ function VisualizeContent() {
             <CompilerPipelineVisualizer
               sourceCode={sourceCode}
               className="Main"
+              language={currentLanguage.toUpperCase()}
             />
           </div>
         )}
