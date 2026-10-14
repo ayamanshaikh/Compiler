@@ -8,7 +8,7 @@
     "start": "next start",
     "lint": "eslint .",
     "type-check": "tsc --noEmit",
-    "test": "node --test scripts/run-adaptive-tests.mjs scripts/test-e2e-adaptive-pipeline.mjs"
+    "test": "node --test scripts/run-adaptive-tests.mjs scripts/test-e2e-adaptive-pipeline.mjs scripts/test-phase7-quality.mjs"
   },
   "dependencies": {
     "lucide-react": "^1.48.0",
